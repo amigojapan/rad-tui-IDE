@@ -1,5 +1,5 @@
 '' ==========================================================
-'' VB1-DOS Clone: Draggable Windows & Tools Fix
+'' VB1-DOS Clone: Text Box Property Grid (Fully Fixed)
 '' ==========================================================
 #include "fbgfx.bi"
 
@@ -286,7 +286,6 @@ Namespace tui
         
         Declare Constructor(px As Integer, py As Integer)
         Declare Sub draw()
-        Declare Sub remove()
         Declare Function process_click(mx As Integer, my As Integer) As Boolean
     End Type
 
@@ -314,15 +313,6 @@ Namespace tui
         This.items(14) = "Timer"
         This.items(15) = "VScrollBar"
     End Constructor
-
-    Sub Toolbox.remove()
-        Color 7, 0 
-        Var spaces = Space(This.w)
-        For i As Integer = This.y To This.y + This.h - 1
-            Locate i, This.x
-            Print spaces;
-        Next
-    End Sub
 
     Sub Toolbox.draw()
         Color 0, 3 
@@ -405,7 +395,6 @@ Dim As Integer old_mx = 0, old_my = 0
 
 Dim As Integer dragged_win = 0, drag_offset_x = 0, drag_offset_y = 0 
 Dim As Integer dragged_ctrl = 0 
-Dim As Boolean dragged_tool = False
 Dim As Boolean resizing_ctrl = False
 Dim As Boolean was_clicked = False
 Dim As Boolean redraw_properties = True 
@@ -414,7 +403,7 @@ Dim As String key_press
 Dim As Integer MOUSE_OFFSET_X = 1
 Dim As Integer MOUSE_OFFSET_Y = 1 
 
-'' MACRO: Safely applies edits
+'' MACRO: Safely applies edits with valid FB block syntax
 #Macro CommitEdit_Macro
 If editing_prop > 0 And selected_win_idx > 0 And selected_ctrl_idx > 0 Then
     Dim As tui.uicontrol Ptr c = windows(selected_win_idx)->get_control(selected_ctrl_idx)
@@ -431,6 +420,7 @@ If editing_prop > 0 And selected_win_idx > 0 And selected_ctrl_idx > 0 Then
         '' Boundary Clamping
         If c->w < 4 Then c->w = 4
         
+        '' FIXED Syntax: Multi-line block instead of illegal ElseIf on a single line
         If c->tool_type = 3 Then
             If c->h < 3 Then c->h = 3
         Else
@@ -491,111 +481,77 @@ While 1
         If left_click Then
             If was_clicked = False Then
                 was_clicked = True
+                Dim As Boolean clicked_property_pane = False
                 
-                '' --- 1. Pre-Check for Property Grid Edit Clicks ---
-                Dim As Boolean clicked_property_row = False
-                Dim As Integer prop_local_y = my - windows(2)->y
-                If windows(2)->HitTest(mx, my) And selected_ctrl_idx > 0 And prop_local_y >= 5 And prop_local_y <= 10 Then
-                    clicked_property_row = True
-                End If
-                
-                '' Only commit previous edits if we aren't starting a new one
-                If Not clicked_property_row Then
-                    CommitEdit_Macro
-                End If
-                
-                Dim As Boolean clicked_handled = False
-                
-                '' --- 2. Check Global Menu ---
-                If my = 1 Then
-                    Color 15, 0: Locate 1, 60: Print "Menu Clicked!       ": Color 0, 7
-                    clicked_handled = True
+                '' 1. DID THEY CLICK THE PROPERTIES WINDOW?
+                If windows(2)->HitTest(mx, my) Then
+                    clicked_property_pane = True
+                    Dim As Integer local_y = my - windows(2)->y
                     
-                '' --- 3. Check Toolbox (Click Tool or Drag Box) ---
-                ElseIf mx >= tools.x And mx < tools.x + tools.w And my >= tools.y And my < tools.y + tools.h Then
-                    If tools.process_click(mx, my) Then
+                    If selected_ctrl_idx > 0 And local_y >= 5 And local_y <= 10 Then
+                        CommitEdit_Macro 
+                        Dim As tui.uicontrol Ptr c = windows(1)->get_control(selected_ctrl_idx)
+                        If local_y = 5 Then editing_prop = 1: edit_buffer = c->name_id
+                        If local_y = 6 Then editing_prop = 2: edit_buffer = c->caption
+                        If local_y = 7 Then editing_prop = 3: edit_buffer = Str(c->x)
+                        If local_y = 8 Then editing_prop = 4: edit_buffer = Str(c->y)
+                        If local_y = 9 Then editing_prop = 5: edit_buffer = Str(c->w)
+                        If local_y = 10 Then editing_prop = 6: edit_buffer = Str(c->h)
+                        redraw_properties = True
+                    Else
+                        CommitEdit_Macro
+                    End If
+                End If
+                
+                '' 2. IF NOT, HANDLE STANDARD WINDOW CLICKS
+                If Not clicked_property_pane Then
+                    CommitEdit_Macro
+                    
+                    If my = 1 Then
+                        Color 15, 0: Locate 1, 60: Print "Menu Clicked!       ": Color 0, 7
+                    ElseIf tools.process_click(mx, my) Then
                         tools.draw() 
                         Color 15, 0: Locate 1, 60: Print "Selected: " & Trim(tools.items(tools.active_tool)) & Space(10): Color 0, 7
                     Else
-                        '' Clicked empty space on Toolbox -> Drag it
-                        dragged_tool = True
-                        drag_offset_x = mx - tools.x
-                        drag_offset_y = my - tools.y
-                    End If
-                    clicked_handled = True
-                End If
-                
-                '' --- 4. Check Windows (Forms & Properties) ---
-                If Not clicked_handled Then
-                    For i As Integer = 2 To 1 Step -1
-                        If windows(i)->HitTest(mx, my) Then
-                            Dim As Integer local_x = mx - windows(i)->x
-                            Dim As Integer local_y = my - windows(i)->y
-                                
-                            If i = 2 Then
-                                '' It's the Properties Window
-                                If clicked_property_row Then
-                                    Dim As tui.uicontrol Ptr c = windows(1)->get_control(selected_ctrl_idx)
-                                    If local_y = 5 Then editing_prop = 1: edit_buffer = c->name_id
-                                    If local_y = 6 Then editing_prop = 2: edit_buffer = c->caption
-                                    If local_y = 7 Then editing_prop = 3: edit_buffer = Str(c->x)
-                                    If local_y = 8 Then editing_prop = 4: edit_buffer = Str(c->y)
-                                    If local_y = 9 Then editing_prop = 5: edit_buffer = Str(c->w)
-                                    If local_y = 10 Then editing_prop = 6: edit_buffer = Str(c->h)
-                                    redraw_properties = True
-                                Else
-                                    '' Clicked empty space on Properties Window -> Drag it
-                                    dragged_win = i
-                                    drag_offset_x = local_x
-                                    drag_offset_y = local_y
-                                End If
-                                
-                            Else
-                                '' It's the Form Window
-                                If tools.active_tool = 0 Then
-                                    Dim As Boolean matched_control = False
+                        For i As Integer = 2 To 1 Step -1
+                            If windows(i)->HitTest(mx, my) Then
+                                Dim As Integer local_x = mx - windows(i)->x
+                                Dim As Integer local_y = my - windows(i)->y
                                     
-                                    '' Did we grab a resize handle?
+                                If tools.active_tool = 0 Then
                                     If selected_win_idx = i And selected_ctrl_idx > 0 Then
                                         Dim As tui.uicontrol Ptr c = windows(i)->get_control(selected_ctrl_idx)
                                         If c <> 0 Then
                                             If local_x = c->x + c->w And local_y = c->y + c->h Then
                                                 resizing_ctrl = True
                                                 dragged_ctrl = selected_ctrl_idx
-                                                matched_control = True
+                                                Exit For
                                             End If
                                         End If
                                     End If
-                                    
-                                    '' Did we click a control to move it?
-                                    If Not matched_control Then
-                                        Dim As Integer clicked_ctrl = windows(i)->HitControl(local_x, local_y)
-                                        If clicked_ctrl > 0 Then
-                                            selected_win_idx = i
-                                            selected_ctrl_idx = clicked_ctrl
-                                            dragged_ctrl = clicked_ctrl
-                                            
-                                            Dim As tui.uicontrol Ptr c = windows(i)->get_control(clicked_ctrl)
-                                            drag_offset_x = local_x - c->x
-                                            drag_offset_y = local_y - c->y
-                                            
-                                            windows(i)->show(selected_ctrl_idx) 
-                                            redraw_properties = True
-                                            matched_control = True
-                                        End If
-                                    End If
-                                    
-                                    '' Clicked empty space on Form Window -> Drag it
-                                    If Not matched_control Then
+                                
+                                    Dim As Integer clicked_ctrl = windows(i)->HitControl(local_x, local_y)
+                                    If clicked_ctrl > 0 Then
+                                        selected_win_idx = i
+                                        selected_ctrl_idx = clicked_ctrl
+                                        dragged_ctrl = clicked_ctrl
+                                        
+                                        Dim As tui.uicontrol Ptr c = windows(i)->get_control(clicked_ctrl)
+                                        drag_offset_x = local_x - c->x
+                                        drag_offset_y = local_y - c->y
+                                        
+                                        windows(i)->show(selected_ctrl_idx) 
+                                        redraw_properties = True
+                                    Else
                                         dragged_win = i
-                                        drag_offset_x = local_x
-                                        drag_offset_y = local_y
+                                        drag_offset_x = mx - windows(i)->x
+                                        drag_offset_y = my - windows(i)->y
                                         selected_ctrl_idx = 0 
                                         windows(i)->show()
                                         redraw_properties = True
                                     End If
+                                    
                                 Else
-                                    '' User has a tool selected and clicked Form -> Place Control
                                     If local_x > 0 And local_x < windows(i)->w - 14 And local_y > 0 And local_y < windows(i)->h - 1 Then
                                         windows(i)->add_control(local_x, local_y, tools.active_tool, tools.items(tools.active_tool))
                                         selected_win_idx = i
@@ -606,14 +562,14 @@ While 1
                                         windows(i)->show(selected_ctrl_idx)
                                     End If
                                 End If
+                                Exit For
                             End If
-                            Exit For
-                        End If
-                    Next
+                        Next
+                    End If
                 End If
             End If
             
-            '' Handle Mouse Dragging Events
+            '' Handle Dragging Motions
             If mouse_moved Then
                 If resizing_ctrl And dragged_ctrl > 0 Then
                     Dim As tui.uicontrol Ptr c = windows(selected_win_idx)->get_control(dragged_ctrl)
@@ -648,40 +604,13 @@ While 1
                     
                     windows(selected_win_idx)->show(selected_ctrl_idx)
                     
-                ElseIf dragged_tool Then
-                    '' Dragging the Toolbox
-                    tools.remove()
-                    tools.x = mx - drag_offset_x
-                    tools.y = my - drag_offset_y
-                    If tools.x < 1 Then tools.x = 1
-                    If tools.y < 2 Then tools.y = 2
-                    If tools.x + tools.w > 80 Then tools.x = 80 - tools.w + 1
-                    If tools.y + tools.h > 25 Then tools.y = 25 - tools.h + 1
-                    
-                    '' Redraw windows below the toolbox to fix graphical trails
-                    For i As Integer = 1 To 2
-                        If selected_win_idx = i Then
-                            windows(i)->show(selected_ctrl_idx)
-                        Else
-                            windows(i)->show()
-                        End If
-                    Next
-                    tools.draw()
-                    
                 ElseIf dragged_win > 0 Then
-                    '' Dragging a Window
                     windows(dragged_win)->x = mx - drag_offset_x
                     windows(dragged_win)->y = my - drag_offset_y
                     
                     tools.draw()
                     For i As Integer = 1 To 2
-                        If i <> dragged_win Then 
-                            If selected_win_idx = i Then
-                                windows(i)->show(selected_ctrl_idx)
-                            Else
-                                windows(i)->show()
-                            End If
-                        End If
+                        If i <> dragged_win Then windows(i)->show()
                     Next
                     
                     If selected_win_idx = dragged_win Then
@@ -696,7 +625,6 @@ While 1
             was_clicked = False
             dragged_win = 0 
             dragged_ctrl = 0
-            dragged_tool = False
             resizing_ctrl = False
         End If
 
@@ -706,6 +634,7 @@ While 1
         If redraw_properties Then
             Dim As tui.window Ptr prop_win = windows(2)
             
+            '' Clear inner window background 
             Color 8, 7
             For py As Integer = 1 To prop_win->h - 2
                 Locate prop_win->y + py, prop_win->x + 1: Print Space(prop_win->w - 2);
@@ -717,6 +646,7 @@ While 1
                     Locate prop_win->y + 2, prop_win->x + 2: Color 0, 7: Print "Type: " & Trim(tools.items(c->tool_type))
                     Locate prop_win->y + 3, prop_win->x + 1: Color 8, 7: Print tui.RepeatUTF8(prop_win->w - 2, "─")
                     
+                    '' MACRO: Draws the Property Label and its Cyan Text Box
                     #Macro DrawProp(ly, lbl, p_id, val_str)
                         Locate prop_win->y + ly, prop_win->x + 2
                         Color 0, 7: Print lbl;
