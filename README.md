@@ -7,7 +7,7 @@ A Visual Basic 1.0 for MS-DOS inspired visual IDE that runs on Linux. Design for
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20(WSL)-green.svg)
 ![Language](https://img.shields.io/badge/language-Python%20%7C%20FreeBASIC-orange.svg)
-![Version](https://img.shields.io/badge/version-2.0.0-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-2.1.0-brightgreen.svg)
 
 ## 🎯 Concept
 
@@ -20,16 +20,28 @@ RAD-TUI recreates the magic of early 90s visual programming environments like VB
 - **Project Management** - Save and load projects as JSON files
 - **Menu System** - Design menus with submenus
 - **Event System** - Multiple event types (click, change, focus, timer, etc.)
+- **File I/O** - Read and write files from your applications
+- **Templates** - Start projects from pre-built templates
 
-## 🚀 Features (Version 2.0.0)
+## 🚀 Features (Version 2.1.0)
 
 ### Visual Design Environment
 - 🖱️ **Mouse-driven interface** - Point, click, drag, and resize
 - 🪟 **Draggable windows** - Move forms and toolboxes freely
-- 🎨 **16 control types** including buttons, labels, text boxes, frames, and more
+- 🎨 **18 control types** including buttons, labels, text boxes, frames, and more
 - 📐 **Visual resizing** - Grab handles to resize controls
 - ✏️ **Property editing** - Edit names, captions, positions, and dimensions
 - 📋 **Control parenting** - Place controls inside frames
+
+### New in v2.1.0
+- 📝 **TextArea** - Multi-line text editor with scrolling and word wrap
+- 📊 **Grid Control** - Spreadsheet-like data grid with sorting and editing
+- 🖼️ **Picture Box** - Display ASCII/Unicode art and XPM images
+- 📁 **File I/O** - Open, read, write, and close files
+- 📋 **Clipboard** - Copy and paste text between applications
+- 🎨 **Templates** - Start from Notepad, Calculator, Database, or Blank templates
+- 🖱️ **Drag & Drop** - Drag data between controls
+- 🐛 **Debugger** - Runtime debugging with breakpoints and watches
 
 ### Code Development
 - 🐍 **Python code-behind** - Write event handlers in Python
@@ -37,6 +49,7 @@ RAD-TUI recreates the magic of early 90s visual programming environments like VB
 - ▶️ **Runtime execution** - Run your forms with live code execution
 - 🐛 **Runtime error display** - See errors in a message box
 - 📝 **Code editor** - Modal editor with cursor navigation
+- 🐞 **Debugger** - Set breakpoints, step through code, watch variables
 
 ### Event System
 - **on_click** - Button and control clicks
@@ -46,12 +59,19 @@ RAD-TUI recreates the magic of early 90s visual programming environments like VB
 - **on_timer** - Timer interval events
 - **on_load** - Form initialization
 - **on_menu** - Menu item selection
+- **on_cell_click** - Grid cell clicks (v2.1.0)
+- **on_cell_edit** - Grid cell edits (v2.1.0)
+- **on_header_click** - Grid header clicks (v2.1.0)
+- **on_image_click** - Picture Box clicks (v2.1.0)
+- **on_drag_start** - Drag initiation (v2.1.0)
+- **on_drop** - Drop completion (v2.1.0)
 
 ### Project Management
 - 💾 **Save/Load projects** - JSON-based project files
 - 📁 **File menu** - Standard save/load/exit operations
 - 🔄 **Design/Runtime toggle** - Switch between design and test modes
-- 📂 **Example projects** - 5 complete example applications
+- 📂 **Example projects** - 10 complete example applications
+- 🎨 **Templates** - Start new projects from templates
 
 ### Terminal Compatibility
 - ✅ **UTF-8 support** - Automatic detection with ASCII fallback
@@ -72,19 +92,37 @@ radtui/
 │   ├── text_editor.json       # Text editor with menus
 │   ├── database_browser.json  # Data browser with navigation
 │   ├── timer_demo.json        # Timer and animation demo
+│   ├── notepad.json           # Full-featured text editor (v2.1.0)
+│   ├── csv_viewer.json        # CSV spreadsheet viewer (v2.1.0)
+│   ├── image_viewer.json      # ASCII art viewer (v2.1.0)
+│   ├── calculator_v21.json    # Calculator with memory (v2.1.0)
+│   ├── file_manager.json      # File browser with drag-drop (v2.1.0)
 │   ├── README.md              # Examples documentation
 │   └── QUICK_START.md         # Quick start guide
 ├── docs/                      # Documentation
 │   ├── README.md              # Documentation index
-│   ├── API_REFERENCE.md       # Complete API reference
+│   ├── API_REFERENCE.md       # Complete API reference (v2.0)
+│   ├── API_REFERENCE_V21.md   # v2.1.0 API reference
 │   ├── EVENT_HANDLING.md      # Event handling guide
-│   ├── PROJECT_FORMAT.md      # JSON format specification
+│   ├── PROJECT_FORMAT.md      # JSON format specification (v2.0)
+│   ├── PROJECT_FORMAT_V21.md  # v2.1.0 format specification
 │   ├── PORTING_GUIDE.md       # VB1 DOS migration guide
-│   └── TUTORIAL.md            # Step-by-step tutorial
+│   ├── TUTORIAL.md            # Step-by-step tutorial
+│   ├── TUTORIAL_TEXT_EDITOR.md # Text editor tutorial (v2.1.0)
+│   ├── FILE_IO_GUIDE.md       # File operations guide (v2.1.0)
+│   ├── GRID_CONTROL_GUIDE.md  # Grid control guide (v2.1.0)
+│   └── DEBUGGING_GUIDE.md    # Debugging guide (v2.1.0)
+├── src/                       # Source modules (v2.1.0)
+│   ├── templates.py           # Template system
+│   ├── template_dialog.py     # Template selection UI
+│   ├── dragdrop.py            # Drag and drop support
+│   ├── image_display.py       # Image display support
+│   └── debugger.py            # Runtime debugger
 ├── tests/                     # Testing utilities
 │   ├── test_terminal_compat.py    # Terminal compatibility tester
 │   └── test_project_interchange.py # Project validation
 ├── HISTORY.md                 # Version history
+├── HISTORY_V21.md             # Detailed v2.1.0 release notes
 ├── TESTING.md                 # Testing guide
 ├── LICENSE                    # MIT License
 └── README.md                  # This file
@@ -126,7 +164,7 @@ fbc rad-tui-BASIC.bas -o rad-tui-BASIC
 ```bash
 # Load an example project:
 python3 rad-tui-py.py
-# Then: File → Load Project → examples/hello_world.json
+# Then: File → Open Project → examples/notepad.json
 ```
 
 ## 🕹️ User Guide
@@ -161,6 +199,9 @@ When you run RAD-TUI, you'll see:
 | Option Btn | 11 | Radio button | on_change |
 | Text Box | 13 | Text input field | on_change, on_focus, on_blur |
 | Timer | 14 | Background timer | on_timer |
+| **TextArea** | **15** | **Multi-line text editor** | **on_change, on_key_press** |
+| **Grid** | **16** | **Data grid/spreadsheet** | **on_cell_click, on_cell_edit, on_header_click** |
+| **Picture Box** | **12** | **Image display** | **on_image_click** |
 
 ### Writing Code
 
@@ -183,6 +224,13 @@ def on_click_btnSubmit():
 
 **Special functions:**
 - `msgbox(text)` - Display a message box
+- `inputbox(prompt, title, default)` - Get user input (v2.1.0)
+- `file_dialog(mode, extensions)` - Open/save file dialog (v2.1.0)
+- `open_file(path, mode)` - Open file for reading/writing (v2.1.0)
+- `read_line(handle)` - Read a line from file (v2.1.0)
+- `write_line(handle, text)` - Write a line to file (v2.1.0)
+- `clipboard_set(text)` - Copy to clipboard (v2.1.0)
+- `clipboard_get()` - Paste from clipboard (v2.1.0)
 - Access controls by `name_id`: `txtName.caption`, `btnSubmit.caption`
 
 ### Menu System
@@ -208,27 +256,29 @@ def on_click_btnSubmit():
 
 - **[QUICK_START.md](examples/QUICK_START.md)** - Get up and running quickly
 - **[TUTORIAL.md](docs/TUTORIAL.md)** - Build your first application
-- **[API_REFERENCE.md](docs/API_REFERENCE.md)** - Complete control and property reference
+- **[TUTORIAL_TEXT_EDITOR.md](docs/TUTORIAL_TEXT_EDITOR.md)** - Build a text editor (v2.1.0)
+- **[API_REFERENCE_V21.md](docs/API_REFERENCE_V21.md)** - Complete v2.1.0 API reference
+- **[FILE_IO_GUIDE.md](docs/FILE_IO_GUIDE.md)** - File operations guide (v2.1.0)
+- **[GRID_CONTROL_GUIDE.md](docs/GRID_CONTROL_GUIDE.md)** - Grid control guide (v2.1.0)
+- **[DEBUGGING_GUIDE.md](docs/DEBUGGING_GUIDE.md)** - Debugging guide (v2.1.0)
 - **[EVENT_HANDLING.md](docs/EVENT_HANDLING.md)** - Event-driven programming guide
-- **[PROJECT_FORMAT.md](docs/PROJECT_FORMAT.md)** - JSON project file specification
-- **[PORTING_GUIDE.md](docs/PORTING_GUIDE.md)** - Migrate from VB1 DOS
+- **[PROJECT_FORMAT_V21.md](docs/PROJECT_FORMAT_V21.md)** - JSON project file specification
 
 ## 📋 Example Projects
 
-### Hello World
-Basic greeting application demonstrating buttons and message boxes.
+### Version 2.0 Examples
+- **Hello World** - Basic greeting application
+- **Calculator** - Functional calculator
+- **Text Editor** - Multi-line text editor
+- **Database Browser** - Data browser with navigation
+- **Timer Demo** - Timer and animation demo
 
-### Calculator
-Functional calculator with buttons, text boxes, and mathematical operations.
-
-### Text Editor
-Multi-line text editor with menus, file operations, and line management.
-
-### Database Browser
-Customer database browser with list boxes, data binding simulation, and navigation.
-
-### Timer Demo
-Counter application with timer events, check boxes, and status updates.
+### Version 2.1.0 Examples
+- **Notepad** - Full-featured text editor with File I/O and menus
+- **CSV Viewer** - Spreadsheet with sorting and CSV import/export
+- **Image Viewer** - ASCII art viewer with ImageList
+- **Calculator v2.1** - Calculator with clipboard and memory
+- **File Manager** - File browser with drag-drop and dialogs
 
 ## 📦 Project File Format
 
@@ -236,6 +286,7 @@ Projects are saved as JSON with this structure:
 
 ```json
 {
+  "version": "2.1.0",
   "x": 21, "y": 4, "w": 36, "h": 17,
   "title": "My Application",
   "menu_count": 1,
@@ -256,7 +307,8 @@ Projects are saved as JSON with this structure:
       "selected_index": -1,
       "scroll_offset": 0
     }
-  ]
+  ],
+  "code": "def on_load_frmMain():\\n    pass\\n"
 }
 ```
 
@@ -269,6 +321,7 @@ Projects are saved as JSON with this structure:
 - Live code execution with `exec()` in controlled namespace
 - Frame rate limiting for performance
 - UTF-8 detection with ASCII fallback
+- **v2.1.0**: Modular architecture with separate template, drag-drop, image, and debugger modules
 
 ### FreeBASIC Implementation
 - Native console graphics using `fbgfx`
