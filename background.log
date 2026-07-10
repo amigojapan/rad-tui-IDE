@@ -1,0 +1,32 @@
+[06:25:58] INFO: Session started, sess_id=314, mode=plan, model=kimi-k2.5:cloud
+[06:25:58] Choose persona START...: 
+[06:25:58] Choose available number (x to cancel): 
+[06:25:59] Set system message ( CTRL+x ENTER to Finish. ): 
+[06:26:00] Choose history START...: 
+[06:26:00] Choose available number (x to cancel): 
+[06:26:01] Canceling...
+[06:26:01] You: 
+[06:26:05] You: 
+[06:26:17] You: 
+[06:26:45] INFO: AI request (iteration 1, msgs=2)
+[06:26:47] INFO: AI response: 2703 prompt + 87 response tokens (total: 2703 / 87)
+[06:26:47] INFO: AI request (iteration 2, msgs=4)
+[06:26:49] INFO: AI response: 2807 prompt + 46 response tokens (total: 5510 / 133)
+[06:26:49] INFO: AI request (iteration 3, msgs=6)
+[06:26:50] INFO: AI response: 2891 prompt + 84 response tokens (total: 8401 / 217)
+[06:26:50] INFO: AI request (iteration 4, msgs=11)
+[06:26:58] INFO: AI response: 23033 prompt + 51 response tokens (total: 31434 / 268)
+[06:26:58] INFO: AI request (iteration 5, msgs=14)
+[06:27:02] INFO: AI response: 49148 prompt + 78 response tokens (total: 80582 / 346)
+[06:27:06] INFO: AI request (iteration 6, msgs=8)
+[06:27:07] INFO: AI response: 2766 prompt + 65 response tokens (total: 83348 / 411)
+[06:27:07] INFO: AI request (iteration 7, msgs=10)
+[06:27:09] INFO: AI response: 2850 prompt + 102 response tokens (total: 86198 / 513)
+[06:27:09] INFO: AI request (iteration 8, msgs=15)
+[06:27:11] INFO: AI response: 23827 prompt + 61 response tokens (total: 110025 / 574)
+[06:27:11] INFO: AI request (iteration 9, msgs=18)
+[06:27:28] INFO: AI response: 31595 prompt + 1901 response tokens (total: 141620 / 2475)
+[06:27:28] INFO: AI request (iteration 10, msgs=21)
+[06:27:33] INFO: AI response: 35167 prompt + 372 response tokens (total: 176787 / 2847)
+[06:27:33] You: 
+[06:27:39] You: 
