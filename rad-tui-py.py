@@ -5,7 +5,7 @@ import copy
 import json
 
 # ==========================================================
-# VB1-DOS Clone: Python curses IDE (ComboBox & ListBox)
+# VB1-DOS Clone: Python curses IDE (Clipping & Prop Toggles)
 # ==========================================================
 
 PYTHON_KEYWORDS = {
@@ -71,24 +71,25 @@ class UIControl:
         return c
 
 class Window:
-    def __init__(self, x, y, w, h, title="untitled"):
+    def __init__(self, x, y, w, h, title="untitled", name_id="Form1"):
         self.x = x
         self.y = y
         self.w = w
         self.h = h
         self.title = title
+        self.name_id = name_id
         self.controls = []
 
     def to_dict(self):
         return {
             'x': self.x, 'y': self.y, 'w': self.w, 'h': self.h,
-            'title': self.title,
+            'title': self.title, 'name_id': self.name_id,
             'controls': [c.to_dict() for c in self.controls]
         }
 
     @classmethod
     def from_dict(cls, data):
-        w = cls(data['x'], data['y'], data['w'], data['h'], data['title'])
+        w = cls(data['x'], data['y'], data['w'], data['h'], data.get('title', 'untitled'), data.get('name_id', 'Form1'))
         w.controls = [UIControl.from_dict(c) for c in data.get('controls', [])]
         return w
 
@@ -105,10 +106,10 @@ class Window:
                 ctrl = UIControl(cx, cy, 15, 1, ctype, name_id, "Check1")
             elif ctype == 11: 
                 ctrl = UIControl(cx, cy, 15, 1, ctype, name_id, "Option1")
-            elif ctype == 2: # ComboBox
+            elif ctype == 2:
                 ctrl = UIControl(cx, cy, 15, 1, ctype, name_id, "Combo1")
                 ctrl.items = ["Item 1", "Item 2", "Item 3"]
-            elif ctype == 10: # ListBox
+            elif ctype == 10:
                 ctrl = UIControl(cx, cy, 15, 4, ctype, name_id, "List1")
                 ctrl.items = ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5"]
             else:
@@ -125,7 +126,7 @@ class Window:
                     best_frame = c
         return best_frame
 
-    def draw(self, stdscr, colors, active_ctrl=-1):
+    def draw(self, stdscr, colors, active_ctrl=-1, pressed_ctrl=-1):
         C_BORDER = colors['border']
         C_BG = colors['bg']
         C_BTN_FACE = colors['btn_face']
@@ -133,6 +134,7 @@ class Window:
         C_TEXTBOX = colors['textbox']
         C_HANDLE = colors['handle']
 
+        # Draw Base Window (Not clipped)
         write_at(stdscr, self.x, self.y, "┌" + "─" * (self.w - 2) + "┐", C_BORDER)
         for i in range(1, self.h - 1):
             write_at(stdscr, self.x, self.y + i, "│", C_BORDER)
@@ -144,27 +146,51 @@ class Window:
         tx = self.x + (self.w // 2) - (len(title_str) // 2)
         write_at(stdscr, tx, self.y, title_str, C_BORDER)
 
+        # Rendering Interceptor to dynamically clip string bounds
+        def write_clipped(cx, cy, text, attr):
+            if cy <= self.y or cy >= self.y + self.h - 1:
+                return
+            min_x = self.x + 1
+            max_x = self.x + self.w - 2
+            
+            if cx > max_x or cx + len(text) - 1 < min_x:
+                return
+                
+            start_idx = max(0, min_x - cx)
+            end_idx = min(len(text), max_x - cx + 1)
+            
+            actual_x = cx + start_idx
+            clipped_text = text[start_idx:end_idx]
+            
+            if clipped_text:
+                write_at(stdscr, actual_x, cy, clipped_text, attr)
+
         for i, c in enumerate(self.controls):
             draw_x = self.x + c.x
             draw_y = self.y + c.y
 
             if c.tool_type == 3: 
+                is_pressed = (i == pressed_ctrl)
+                TOP_C = C_BTN_FACE if is_pressed else C_BTN_HL
+                BOT_C = C_BTN_HL if is_pressed else C_BTN_FACE
+
                 actual_h = max(3, c.h)
-                write_at(stdscr, draw_x, draw_y, "┌" + "─" * (c.w - 2), C_BTN_HL)
-                write_at(stdscr, draw_x + c.w - 1, draw_y, "┐", C_BTN_FACE)
+                write_clipped(draw_x, draw_y, "┌" + "─" * (c.w - 2), TOP_C)
+                write_clipped(draw_x + c.w - 1, draw_y, "┐", BOT_C)
                 
                 for r in range(1, actual_h - 1):
-                    write_at(stdscr, draw_x, draw_y + r, "│", C_BTN_HL)
+                    write_clipped(draw_x, draw_y + r, "│", TOP_C)
                     if r == actual_h // 2:
                         pad = (c.w - 2 - len(c.caption)) // 2
+                        if is_pressed: pad += 1 
                         text = (" " * pad + c.caption + " " * (c.w - 2))[:c.w - 2]
-                        write_at(stdscr, draw_x + 1, draw_y + r, text, C_BTN_FACE)
+                        write_clipped(draw_x + 1, draw_y + r, text, C_BTN_FACE)
                     else:
-                        write_at(stdscr, draw_x + 1, draw_y + r, " " * (c.w - 2), C_BTN_FACE)
-                    write_at(stdscr, draw_x + c.w - 1, draw_y + r, "│", C_BTN_FACE)
+                        write_clipped(draw_x + 1, draw_y + r, " " * (c.w - 2), C_BTN_FACE)
+                    write_clipped(draw_x + c.w - 1, draw_y + r, "│", BOT_C)
                 
-                write_at(stdscr, draw_x, draw_y + actual_h - 1, "└", C_BTN_HL)
-                write_at(stdscr, draw_x + 1, draw_y + actual_h - 1, "─" * (c.w - 2) + "┘", C_BTN_FACE)
+                write_clipped(draw_x, draw_y + actual_h - 1, "└", TOP_C)
+                write_clipped(draw_x + 1, draw_y + actual_h - 1, "─" * (c.w - 2) + "┘", BOT_C)
 
             elif c.tool_type == 13: 
                 for r in range(c.h):
@@ -173,76 +199,77 @@ class Window:
                         if len(display_text) >= c.w:
                             display_text = display_text[-(c.w-1):]
                         text = (display_text + " " * c.w)[:c.w]
-                        write_at(stdscr, draw_x, draw_y + r, text, C_TEXTBOX)
+                        write_clipped(draw_x, draw_y + r, text, C_TEXTBOX)
                     else:
-                        write_at(stdscr, draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
+                        write_clipped(draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
                         
-            elif c.tool_type == 2: # ComboBox Render
+            elif c.tool_type == 2: 
                 disp_text = c.caption
                 if c.items and 0 <= c.list_index < len(c.items):
                     disp_text = c.items[c.list_index]
                 text = (disp_text + " " * c.w)[:c.w-1] + "▼"
-                write_at(stdscr, draw_x, draw_y, text, C_TEXTBOX)
+                write_clipped(draw_x, draw_y, text, C_TEXTBOX)
 
-            elif c.tool_type == 10: # ListBox Render
+            elif c.tool_type == 10: 
                 for r in range(c.h):
                     idx = c.scroll_offset + r
                     if c.items and 0 <= idx < len(c.items):
                         disp_text = c.items[idx]
                         text = (disp_text + " " * c.w)[:c.w]
                         attr = C_HANDLE if idx == c.list_index else C_TEXTBOX
-                        write_at(stdscr, draw_x, draw_y + r, text, attr)
+                        write_clipped(draw_x, draw_y + r, text, attr)
                     else:
-                        write_at(stdscr, draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
+                        write_clipped(draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
 
             elif c.tool_type == 7: 
-                write_at(stdscr, draw_x, draw_y, "┌" + "─" * (c.w - 2) + "┐", C_BORDER)
+                write_clipped(draw_x, draw_y, "┌" + "─" * (c.w - 2) + "┐", C_BORDER)
                 for r in range(1, c.h - 1):
-                    write_at(stdscr, draw_x, draw_y + r, "│", C_BORDER)
-                    write_at(stdscr, draw_x + 1, draw_y + r, " " * (c.w - 2), C_BG)
-                    write_at(stdscr, draw_x + c.w - 1, draw_y + r, "│", C_BORDER)
-                write_at(stdscr, draw_x, draw_y + c.h - 1, "└" + "─" * (c.w - 2) + "┘", C_BORDER)
+                    write_clipped(draw_x, draw_y + r, "│", C_BORDER)
+                    write_clipped(draw_x + 1, draw_y + r, " " * (c.w - 2), C_BG)
+                    write_clipped(draw_x + c.w - 1, draw_y + r, "│", C_BORDER)
+                write_clipped(draw_x, draw_y + c.h - 1, "└" + "─" * (c.w - 2) + "┘", C_BORDER)
                 cap_str = f" {c.caption} "
                 if len(cap_str) <= c.w - 2:
-                    write_at(stdscr, draw_x + 2, draw_y, cap_str, C_BORDER)
+                    write_clipped(draw_x + 2, draw_y, cap_str, C_BORDER)
                     
             elif c.tool_type == 1: 
                 for r in range(c.h):
                     if r == 0:
                         mark = "X" if c.value else " "
                         text = (f"[{mark}] {c.caption}" + " " * c.w)[:c.w]
-                        write_at(stdscr, draw_x, draw_y + r, text, C_TEXTBOX)
+                        write_clipped(draw_x, draw_y + r, text, C_TEXTBOX)
                     else:
-                        write_at(stdscr, draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
+                        write_clipped(draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
                         
             elif c.tool_type == 11: 
                 for r in range(c.h):
                     if r == 0:
                         mark = "•" if c.value else " "
                         text = (f"({mark}) {c.caption}" + " " * c.w)[:c.w]
-                        write_at(stdscr, draw_x, draw_y + r, text, C_TEXTBOX)
+                        write_clipped(draw_x, draw_y + r, text, C_TEXTBOX)
                     else:
-                        write_at(stdscr, draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
+                        write_clipped(draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
                         
             else:  
                 for r in range(c.h):
                     if r == 0:
                         text = (c.caption + " " * c.w)[:c.w]
-                        write_at(stdscr, draw_x, draw_y + r, text, C_TEXTBOX)
+                        write_clipped(draw_x, draw_y + r, text, C_TEXTBOX)
                     else:
-                        write_at(stdscr, draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
+                        write_clipped(draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
 
         if active_ctrl >= 0 and active_ctrl < len(self.controls):
             c = self.controls[active_ctrl]
             hx = self.x + c.x + c.w
             hy = self.y + c.y + c.h
-            if hx < self.x + self.w and hy < self.y + self.h:
-                write_at(stdscr, hx, hy, "■", C_HANDLE)
+            write_clipped(hx, hy, "■", C_HANDLE)
 
     def hit_test(self, mx, my):
         return (self.x <= mx < self.x + self.w) and (self.y <= my < self.y + self.h)
 
     def hit_control(self, lx, ly):
+        if lx <= 0 or lx >= self.w - 1 or ly <= 0 or ly >= self.h - 1:
+            return -1 # Ensures invisible borders don't trigger controls underneath
         for i in range(len(self.controls) - 1, -1, -1):
             c = self.controls[i]
             if (c.x <= lx < c.x + c.w) and (c.y <= ly < c.y + c.h):
@@ -313,6 +340,16 @@ def draw_properties(stdscr, prop_win, windows, selected_win_idx, selected_ctrl_i
     for py in range(1, prop_win.h - 1):
         write_at(stdscr, prop_win.x + 1, prop_win.y + py, " " * (prop_win.w - 2), C_BG)
 
+    def draw_prop(ly, lbl, p_id, val_str):
+        write_at(stdscr, prop_win.x + 2, prop_win.y + ly, lbl, C_LABEL)
+        if editing_prop == p_id:
+            eb = edit_buffer + "_"
+            display_text = eb[-10:] if len(eb) > 10 else (eb + "          ")[:10]
+        else:
+            vs = str(val_str)
+            display_text = vs[:10] if len(vs) > 10 else (vs + "          ")[:10]
+        write_at(stdscr, prop_win.x + 8, prop_win.y + ly, display_text, C_TB)
+
     if selected_win_idx >= 0 and selected_ctrl_idx >= 0:
         c = windows[selected_win_idx].controls[selected_ctrl_idx]
         tool_name = tools.items[c.tool_type].strip()
@@ -320,27 +357,33 @@ def draw_properties(stdscr, prop_win, windows, selected_win_idx, selected_ctrl_i
         write_at(stdscr, prop_win.x + 2, prop_win.y + 2, f"Type: {tool_name}", C_LABEL)
         write_at(stdscr, prop_win.x + 1, prop_win.y + 3, "─" * (prop_win.w - 2), C_BG)
 
-        def draw_prop(ly, lbl, p_id, val_str):
-            write_at(stdscr, prop_win.x + 2, prop_win.y + ly, lbl, C_LABEL)
-            if editing_prop == p_id:
-                eb = edit_buffer + "_"
-                display_text = eb[-10:] if len(eb) > 10 else (eb + "          ")[:10]
-            else:
-                vs = str(val_str)
-                display_text = vs[:10] if len(vs) > 10 else (vs + "          ")[:10]
-            write_at(stdscr, prop_win.x + 8, prop_win.y + ly, display_text, C_TB)
-
         draw_prop(5, "Name:", 1, c.name_id)
         draw_prop(6, "Cap: ", 2, c.caption)
         draw_prop(7, "X:   ", 3, c.x)
         draw_prop(8, "Y:   ", 4, c.y)
         draw_prop(9, "W:   ", 5, c.w)
         draw_prop(10,"H:   ", 6, c.h)
+        
         if c.tool_type in (1, 11): 
-            draw_prop(11,"Val: ", 7, "True" if c.value else "False")
+            write_at(stdscr, prop_win.x + 2, prop_win.y + 11, "Val: ", C_LABEL)
+            mark = "X" if c.value else " "
+            write_at(stdscr, prop_win.x + 8, prop_win.y + 11, f"[{mark}]       ", C_TB)
+            
         if c.tool_type in (2, 10):
             draw_prop(11,"Items:", 8, ",".join(c.items))
             draw_prop(12,"Idx: ", 9, str(c.list_index))
+            
+    elif selected_win_idx >= 0 and selected_ctrl_idx == -1:
+        w = windows[selected_win_idx]
+        write_at(stdscr, prop_win.x + 2, prop_win.y + 2, f"Type: Form", C_LABEL)
+        write_at(stdscr, prop_win.x + 1, prop_win.y + 3, "─" * (prop_win.w - 2), C_BG)
+
+        draw_prop(5, "Name:", 1, w.name_id)
+        draw_prop(6, "Cap: ", 2, w.title)
+        draw_prop(7, "X:   ", 3, w.x)
+        draw_prop(8, "Y:   ", 4, w.y)
+        draw_prop(9, "W:   ", 5, w.w)
+        draw_prop(10,"H:   ", 6, w.h)
     else:
         write_at(stdscr, prop_win.x + 2, prop_win.y + 2, "No selection.", C_LABEL)
 
@@ -398,7 +441,6 @@ def draw_code_editor(stdscr, lines, cy, cx, target_name, box_x, box_y, box_w, bo
             pass
 
 def handle_combobox_dropdown(stdscr, dx, dy, w, items, colors):
-    """Synchronous overlay for ComboBox list selection"""
     if not items: return None
     C_BORDER = colors['border']
     C_BG = colors['bg']
@@ -595,8 +637,8 @@ def main(stdscr):
 
     tools = Toolbox(0, 1)
     windows = [
-        Window(17, 1, 41, 18, "Form 1"),
-        Window(48, 8, 22, 14, "Properties")
+        Window(17, 1, 41, 18, "Form 1", "Form1"),
+        Window(48, 8, 22, 14, "Properties", "Properties")
     ]
 
     selected_win_idx = -1
@@ -626,28 +668,45 @@ def main(stdscr):
     run_mode = False
     run_globals = {}
     run_focused_ctrl = -1 
+    run_pressed_ctrl = -1 
     design_backup = None
 
     def commit_edit():
         nonlocal editing_prop, edit_buffer, selected_win_idx, selected_ctrl_idx
-        if editing_prop > 0 and selected_win_idx >= 0 and selected_ctrl_idx >= 0:
-            c = windows[selected_win_idx].controls[selected_ctrl_idx]
-            try:
-                if editing_prop == 1: c.name_id = edit_buffer
-                elif editing_prop == 2: c.caption = edit_buffer
-                elif editing_prop == 3: c.x = int(edit_buffer)
-                elif editing_prop == 4: c.y = int(edit_buffer)
-                elif editing_prop == 5: c.w = int(edit_buffer)
-                elif editing_prop == 6: c.h = int(edit_buffer)
-                elif editing_prop == 7: c.value = edit_buffer.lower() in ('true', '1', 't', 'y', 'yes', 'x')
-                elif editing_prop == 8: c.items = [s.strip() for s in edit_buffer.split(',')] if edit_buffer else []
-                elif editing_prop == 9: c.list_index = int(edit_buffer) if edit_buffer.lstrip('-').isdigit() else 0
-            except ValueError:
-                pass 
-            c.w = max(4, c.w)
-            c.h = max(3 if c.tool_type in (3, 7) else 1, c.h)
-            c.x = max(1, min(c.x, windows[selected_win_idx].w - c.w - 1))
-            c.y = max(1, min(c.y, windows[selected_win_idx].h - c.h - 1))
+        if editing_prop > 0 and selected_win_idx >= 0:
+            if selected_ctrl_idx >= 0:
+                c = windows[selected_win_idx].controls[selected_ctrl_idx]
+                try:
+                    if editing_prop == 1: c.name_id = edit_buffer
+                    elif editing_prop == 2: c.caption = edit_buffer
+                    elif editing_prop == 3: c.x = int(edit_buffer)
+                    elif editing_prop == 4: c.y = int(edit_buffer)
+                    elif editing_prop == 5: c.w = int(edit_buffer)
+                    elif editing_prop == 6: c.h = int(edit_buffer)
+                    elif editing_prop == 8: c.items = [s.strip() for s in edit_buffer.split(',')] if edit_buffer else []
+                    elif editing_prop == 9: c.list_index = int(edit_buffer) if edit_buffer.lstrip('-').isdigit() else 0
+                except ValueError:
+                    pass 
+                c.w = max(4, c.w)
+                c.h = max(3 if c.tool_type in (3, 7) else 1, c.h)
+                c.x = max(1, min(c.x, windows[selected_win_idx].w - c.w - 1))
+                c.y = max(1, min(c.y, windows[selected_win_idx].h - c.h - 1))
+            else:
+                w = windows[selected_win_idx]
+                try:
+                    if editing_prop == 1: w.name_id = edit_buffer
+                    elif editing_prop == 2: w.title = edit_buffer
+                    elif editing_prop == 3: w.x = int(edit_buffer)
+                    elif editing_prop == 4: w.y = int(edit_buffer)
+                    elif editing_prop == 5: w.w = int(edit_buffer)
+                    elif editing_prop == 6: w.h = int(edit_buffer)
+                except ValueError:
+                    pass
+                w.w = max(10, w.w)
+                w.h = max(5, w.h)
+                w.x = max(0, min(w.x, curses.COLS - w.w))
+                w.y = max(1, min(w.y, curses.LINES - w.h))
+                
         editing_prop = 0
 
     stdscr.clear()
@@ -658,12 +717,37 @@ def main(stdscr):
         box_x = (curses.COLS - box_w) // 2
         box_y = (curses.LINES - box_h) // 2
 
+        current_pressed_idx = -1
+        if mouse_down:
+            if run_mode and run_pressed_ctrl >= 0:
+                win = windows[0]
+                if win.hit_test(mx, my) and win.hit_control(mx - win.x, my - win.y) == run_pressed_ctrl:
+                    current_pressed_idx = run_pressed_ctrl
+            elif not run_mode and dragged_ctrl >= 0:
+                current_pressed_idx = dragged_ctrl
+
         if code_mode:
             draw_code_editor(stdscr, code_lines, code_cy, code_cx, code_target_ctrl.name_id, box_x, box_y, box_w, box_h, C)
             curses.curs_set(1) 
         else:
             if run_mode and run_focused_ctrl >= 0 and windows[0].controls[run_focused_ctrl].tool_type == 13:
-                curses.curs_set(1)
+                # Calculate active cursor mapping
+                c = windows[0].controls[run_focused_ctrl]
+                cursor_y = windows[0].y + c.y
+                display_text = c.caption
+                if len(display_text) >= c.w:
+                    display_text = display_text[-(c.w-1):]
+                cursor_x = windows[0].x + c.x + len(display_text)
+                
+                if (cursor_y > windows[0].y and cursor_y < windows[0].y + windows[0].h - 1 and
+                    cursor_x > windows[0].x and cursor_x < windows[0].x + windows[0].w - 1):
+                    try:
+                        stdscr.move(cursor_y, cursor_x)
+                        curses.curs_set(1)
+                    except curses.error:
+                        curses.curs_set(0)
+                else:
+                    curses.curs_set(0) 
             else:
                 curses.curs_set(0) 
             
@@ -682,24 +766,15 @@ def main(stdscr):
                     continue
                     
                 act_idx = selected_ctrl_idx if (i == selected_win_idx and not run_mode) else -1
-                win.draw(stdscr, C, act_idx)
+                press_idx = current_pressed_idx if (i == (0 if run_mode else selected_win_idx)) else -1
+                
+                win.draw(stdscr, C, act_idx, press_idx)
                 
                 if i == 1 and not run_mode:
                     draw_properties(stdscr, win, windows, selected_win_idx, selected_ctrl_idx, editing_prop, edit_buffer, C, tools)
 
             if run_mode and run_globals.get('__msg__'):
                 draw_msgbox(stdscr, run_globals['__msg__'], C)
-
-            if run_mode and run_focused_ctrl >= 0:
-                c = windows[0].controls[run_focused_ctrl]
-                if c.tool_type == 13:
-                    display_text = c.caption
-                    if len(display_text) >= c.w:
-                        display_text = display_text[-(c.w-1):]
-                    try:
-                        stdscr.move(windows[0].y + c.y, windows[0].x + c.x + len(display_text))
-                    except curses.error:
-                        pass
 
         stdscr.refresh()
 
@@ -737,6 +812,7 @@ def main(stdscr):
                             elif 18 <= mx <= 23 and my == 0:
                                 run_mode = False
                                 run_focused_ctrl = -1
+                                run_pressed_ctrl = -1
                                 if design_backup is not None:
                                     windows[0] = copy.deepcopy(design_backup)
                                 stdscr.clear()
@@ -756,7 +832,7 @@ def main(stdscr):
                                             
                                             trigger_click = False
                                             if c.tool_type == 3: 
-                                                trigger_click = True
+                                                run_pressed_ctrl = idx 
                                             elif c.tool_type == 1: 
                                                 c.value = not c.value
                                                 trigger_click = True
@@ -800,8 +876,12 @@ def main(stdscr):
                             prop_win = windows[1]
                             prop_local_y = my - prop_win.y
                             clicked_prop_row = False
-                            if prop_win.hit_test(mx, my) and selected_ctrl_idx >= 0 and 5 <= prop_local_y <= 12:
-                                clicked_prop_row = True
+                            
+                            if prop_win.hit_test(mx, my):
+                                if selected_ctrl_idx >= 0 and 5 <= prop_local_y <= 12:
+                                    clicked_prop_row = True
+                                elif selected_ctrl_idx == -1 and selected_win_idx >= 0 and 5 <= prop_local_y <= 10:
+                                    clicked_prop_row = True
                             
                             if not clicked_prop_row:
                                 commit_edit()
@@ -877,21 +957,35 @@ def main(stdscr):
                                         
                                         if i == 1: 
                                             if clicked_prop_row:
-                                                c = windows[0].controls[selected_ctrl_idx]
-                                                if prop_local_y == 5: editing_prop, edit_buffer = 1, c.name_id
-                                                elif prop_local_y == 6: editing_prop, edit_buffer = 2, c.caption
-                                                elif prop_local_y == 7: editing_prop, edit_buffer = 3, str(c.x)
-                                                elif prop_local_y == 8: editing_prop, edit_buffer = 4, str(c.y)
-                                                elif prop_local_y == 9: editing_prop, edit_buffer = 5, str(c.w)
-                                                elif prop_local_y == 10: editing_prop, edit_buffer = 6, str(c.h)
-                                                elif prop_local_y == 11:
-                                                    if c.tool_type in (1, 11): editing_prop, edit_buffer = 7, str(c.value)
-                                                    elif c.tool_type in (2, 10): editing_prop, edit_buffer = 8, ",".join(c.items)
+                                                if selected_ctrl_idx >= 0:
+                                                    c = windows[selected_win_idx].controls[selected_ctrl_idx]
+                                                    if prop_local_y == 5: editing_prop, edit_buffer = 1, c.name_id
+                                                    elif prop_local_y == 6: editing_prop, edit_buffer = 2, c.caption
+                                                    elif prop_local_y == 7: editing_prop, edit_buffer = 3, str(c.x)
+                                                    elif prop_local_y == 8: editing_prop, edit_buffer = 4, str(c.y)
+                                                    elif prop_local_y == 9: editing_prop, edit_buffer = 5, str(c.w)
+                                                    elif prop_local_y == 10: editing_prop, edit_buffer = 6, str(c.h)
+                                                    elif prop_local_y == 11:
+                                                        if c.tool_type in (1, 11): 
+                                                            c.value = not c.value
+                                                            clicked_prop_row = False 
+                                                        elif c.tool_type in (2, 10): 
+                                                            editing_prop, edit_buffer = 8, ",".join(c.items)
+                                                        else: 
+                                                            clicked_prop_row = False
+                                                    elif prop_local_y == 12 and c.tool_type in (2, 10):
+                                                        editing_prop, edit_buffer = 9, str(c.list_index)
+                                                    else:
+                                                        clicked_prop_row = False
+                                                elif selected_win_idx >= 0:
+                                                    w = windows[selected_win_idx]
+                                                    if prop_local_y == 5: editing_prop, edit_buffer = 1, w.name_id
+                                                    elif prop_local_y == 6: editing_prop, edit_buffer = 2, w.title
+                                                    elif prop_local_y == 7: editing_prop, edit_buffer = 3, str(w.x)
+                                                    elif prop_local_y == 8: editing_prop, edit_buffer = 4, str(w.y)
+                                                    elif prop_local_y == 9: editing_prop, edit_buffer = 5, str(w.w)
+                                                    elif prop_local_y == 10: editing_prop, edit_buffer = 6, str(w.h)
                                                     else: clicked_prop_row = False
-                                                elif prop_local_y == 12 and c.tool_type in (2, 10):
-                                                    editing_prop, edit_buffer = 9, str(c.list_index)
-                                                else:
-                                                    clicked_prop_row = False
                                             else:
                                                 dragged_win = i
                                                 drag_offset_x = local_x
@@ -936,11 +1030,14 @@ def main(stdscr):
                                                 if not matched_control:
                                                     if local_x == win.w - 1 and local_y == win.h - 1:
                                                         resizing_win = i
+                                                        selected_win_idx = i
+                                                        selected_ctrl_idx = -1
                                                         clicked_handled = True
                                                         break
                                                     dragged_win = i
                                                     drag_offset_x = local_x
                                                     drag_offset_y = local_y
+                                                    selected_win_idx = i
                                                     selected_ctrl_idx = -1
                                             else:
                                                 if 0 < local_x < win.w - 14 and 0 < local_y < win.h - 1:
@@ -951,6 +1048,18 @@ def main(stdscr):
                                         break
 
                 elif mouse_released:
+                    if run_mode and run_pressed_ctrl >= 0:
+                        win = windows[0]
+                        if win.hit_test(mx, my):
+                            lx = mx - win.x
+                            ly = my - win.y
+                            if win.hit_control(lx, ly) == run_pressed_ctrl:
+                                c = win.controls[run_pressed_ctrl]
+                                fn = f"on_click_{c.name_id}"
+                                if fn in run_globals:
+                                    try: run_globals[fn]()
+                                    except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
+
                     mouse_down = False
                     dragged_win = -1
                     resizing_win = -1
@@ -958,6 +1067,7 @@ def main(stdscr):
                     dragged_frame_children = []
                     dragged_tool = False
                     resizing_ctrl = False
+                    run_pressed_ctrl = -1
 
                 if mouse_down and mouse_moved and not code_mode:
                     stdscr.clear() 
@@ -1059,12 +1169,12 @@ def main(stdscr):
             elif run_mode:
                 if run_focused_ctrl >= 0:
                     c = windows[0].controls[run_focused_ctrl]
-                    if c.tool_type == 13: # Text Box Typing
+                    if c.tool_type == 13: 
                         if ch in (8, 127, curses.KEY_BACKSPACE):
                             c.caption = c.caption[:-1]
                         elif 32 <= ch <= 126:
                             c.caption += chr(ch)
-                    elif c.tool_type == 10: # List Box Scrolling
+                    elif c.tool_type == 10: 
                         if ch == curses.KEY_UP:
                             c.list_index = max(0, c.list_index - 1)
                             if c.list_index < c.scroll_offset: c.scroll_offset = c.list_index
@@ -1083,10 +1193,16 @@ def main(stdscr):
                                     except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
 
             elif not run_mode:
-                if editing_prop == 0 and selected_win_idx >= 0 and selected_ctrl_idx >= 0:
+                if editing_prop == 0 and selected_win_idx >= 0:
+                    target_cap = ""
+                    if selected_ctrl_idx >= 0:
+                        target_cap = windows[selected_win_idx].controls[selected_ctrl_idx].caption
+                    else:
+                        target_cap = windows[selected_win_idx].title
+
                     if ch in (8, 127, curses.KEY_BACKSPACE) or (32 <= ch <= 126):
                         editing_prop = 2
-                        edit_buffer = windows[selected_win_idx].controls[selected_ctrl_idx].caption
+                        edit_buffer = target_cap
                 
                 if editing_prop > 0:
                     if ch in (10, 13, curses.KEY_ENTER):

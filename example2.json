@@ -3,7 +3,8 @@
   "y": 2,
   "w": 55,
   "h": 22,
-  "title": "Form 1",
+  "title": "example 2",
+  "name_id": "Form1",
   "controls": [
     {
       "x": 16,
