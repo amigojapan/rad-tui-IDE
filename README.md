@@ -38,19 +38,6 @@ RAD-TUI recreates the magic of early 90s visual programming environments like VB
 - 📁 **File menu** - Standard save/load/exit operations
 - 🔄 **Design/Runtime toggle** - Switch between design and test modes
 
-## 📁 Project Structure
-
-```
-radtui/
-├── rad-tui-py.py          # Python/curses implementation (recommended)
-├── rad-tui-BASIC.bas      # FreeBASIC implementation
-├── rad-tui-BASIC          # Compiled FreeBASIC binary
-├── example1.json          # Sample "Hello Name" application
-├── HISTORY.md             # Development history/changelog
-├── LICENSE                # GPL v3 License
-└── README.md              # This file
-```
-
 ## 🎮 How to Run
 
 ### Python Version (Recommended)
