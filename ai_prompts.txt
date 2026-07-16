@@ -1,0 +1,29 @@
+make the bevel of the button reverse colors during white the mouse button is held
+make the properties window also display the properties including the caption for the form in the properties window when the background of the form is clicked
+
+
+change the properties of option buttons and check boxes, so that instead of displaying True or False in the properties window, the value can be changed using a checkbox make it so that if the form is made too small to hold the controls inside of it, it hides the portion of the controls that have been hidden by the window, and later if it is made bigger, it should reveal them agStan. 
+
+
+task1
+implementt button_down() function for he user to code in the code window. 
+task2
+implement the timer control, thatkets the user put a time in milliseconds, and every such milliseconds it calls a function
+
+task3
+make an example minesweeper for this system 10 by 10 buttons with random 10 bombs, where when the button_down function is held down, a caption at the top of the minesweeper has a (.O.) expresión kaomji in a text box bombs when the3 button held down, when the button  is released, the expression should change to a happy kaomoji if it is not a bomb button and a sad kaomoji if it is a bomb, also put a textbox with the time elapsed since the game started, and I would like this to update every second using the timer control function
+
+--done
+
+add an on_button_up() event,
+add a on_right_click() event
+
+
+
+change all hte on_click events to on_button_up events please
+make it so that when people click with the rigth mouse button, it shoudl make a flag with teh caption F on that button, if the caption is already there then clear it back to an empty string
+
+
+make the background color propertie of buttons settable
+
+if a bomb explodes set the backround color of that button to red

@@ -5,7 +5,7 @@ import copy
 import json
 
 # ==========================================================
-# VB1-DOS Clone: Python curses IDE (Clipping & Prop Toggles)
+# VB1-DOS Clone: Python curses IDE (Colors & New Events)
 # ==========================================================
 
 PYTHON_KEYWORDS = {
@@ -49,6 +49,9 @@ class UIControl:
         self.items = []
         self.list_index = 0
         self.scroll_offset = 0
+        self.interval = 1000 
+        self.last_tick = 0   
+        self.bg_color = 12 # Default Button BG Color (12=White/Black)
 
     def to_dict(self):
         return {
@@ -56,7 +59,8 @@ class UIControl:
             'tool_type': self.tool_type, 'name_id': self.name_id,
             'caption': self.caption, 'code': self.code, 'value': self.value,
             'items': self.items, 'list_index': self.list_index, 
-            'scroll_offset': self.scroll_offset
+            'scroll_offset': self.scroll_offset, 'interval': self.interval,
+            'bg_color': self.bg_color
         }
 
     @classmethod
@@ -68,6 +72,8 @@ class UIControl:
         c.items = data.get('items', [])
         c.list_index = data.get('list_index', 0)
         c.scroll_offset = data.get('scroll_offset', 0)
+        c.interval = data.get('interval', 1000)
+        c.bg_color = data.get('bg_color', 12)
         return c
 
 class Window:
@@ -112,6 +118,8 @@ class Window:
             elif ctype == 10:
                 ctrl = UIControl(cx, cy, 15, 4, ctype, name_id, "List1")
                 ctrl.items = ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5"]
+            elif ctype == 14:
+                ctrl = UIControl(cx, cy, 10, 1, ctype, name_id, "Timer1")
             else:
                 ctrl = UIControl(cx, cy, 12, 1, ctype, name_id, ctitle.strip())
             self.controls.append(ctrl)
@@ -126,7 +134,7 @@ class Window:
                     best_frame = c
         return best_frame
 
-    def draw(self, stdscr, colors, active_ctrl=-1, pressed_ctrl=-1):
+    def draw(self, stdscr, colors, active_ctrl=-1, pressed_ctrl=-1, run_mode=False):
         C_BORDER = colors['border']
         C_BG = colors['bg']
         C_BTN_FACE = colors['btn_face']
@@ -166,6 +174,9 @@ class Window:
                 write_at(stdscr, actual_x, cy, clipped_text, attr)
 
         for i, c in enumerate(self.controls):
+            if run_mode and c.tool_type == 14:
+                continue 
+
             draw_x = self.x + c.x
             draw_y = self.y + c.y
 
@@ -175,8 +186,12 @@ class Window:
                 BOT_C = C_BTN_HL if is_pressed else C_BTN_FACE
 
                 actual_h = max(3, c.h)
+                # Ensure bevels use original styling
                 write_clipped(draw_x, draw_y, "┌" + "─" * (c.w - 2), TOP_C)
                 write_clipped(draw_x + c.w - 1, draw_y, "┐", BOT_C)
+                
+                # Fetch custom button background color strictly for the interior
+                base_color = curses.color_pair(c.bg_color)
                 
                 for r in range(1, actual_h - 1):
                     write_clipped(draw_x, draw_y + r, "│", TOP_C)
@@ -184,9 +199,9 @@ class Window:
                         pad = (c.w - 2 - len(c.caption)) // 2
                         if is_pressed: pad += 1 
                         text = (" " * pad + c.caption + " " * (c.w - 2))[:c.w - 2]
-                        write_clipped(draw_x + 1, draw_y + r, text, C_BTN_FACE)
+                        write_clipped(draw_x + 1, draw_y + r, text, base_color)
                     else:
-                        write_clipped(draw_x + 1, draw_y + r, " " * (c.w - 2), C_BTN_FACE)
+                        write_clipped(draw_x + 1, draw_y + r, " " * (c.w - 2), base_color)
                     write_clipped(draw_x + c.w - 1, draw_y + r, "│", BOT_C)
                 
                 write_clipped(draw_x, draw_y + actual_h - 1, "└", TOP_C)
@@ -220,6 +235,9 @@ class Window:
                         write_clipped(draw_x, draw_y + r, text, attr)
                     else:
                         write_clipped(draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
+
+            elif c.tool_type == 14: 
+                write_clipped(draw_x, draw_y, ("[⏱] " + c.name_id)[:c.w], C_TEXTBOX)
 
             elif c.tool_type == 7: 
                 write_clipped(draw_x, draw_y, "┌" + "─" * (c.w - 2) + "┐", C_BORDER)
@@ -258,7 +276,7 @@ class Window:
                     else:
                         write_clipped(draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
 
-        if active_ctrl >= 0 and active_ctrl < len(self.controls):
+        if not run_mode and active_ctrl >= 0 and active_ctrl < len(self.controls):
             c = self.controls[active_ctrl]
             hx = self.x + c.x + c.w
             hy = self.y + c.y + c.h
@@ -269,7 +287,7 @@ class Window:
 
     def hit_control(self, lx, ly):
         if lx <= 0 or lx >= self.w - 1 or ly <= 0 or ly >= self.h - 1:
-            return -1 # Ensures invisible borders don't trigger controls underneath
+            return -1 
         for i in range(len(self.controls) - 1, -1, -1):
             c = self.controls[i]
             if (c.x <= lx < c.x + c.w) and (c.y <= ly < c.y + c.h):
@@ -352,7 +370,7 @@ def draw_properties(stdscr, prop_win, windows, selected_win_idx, selected_ctrl_i
 
     if selected_win_idx >= 0 and selected_ctrl_idx >= 0:
         c = windows[selected_win_idx].controls[selected_ctrl_idx]
-        tool_name = tools.items[c.tool_type].strip()
+        tool_name = "Timer" if c.tool_type == 14 else tools.items[c.tool_type].strip()
         
         write_at(stdscr, prop_win.x + 2, prop_win.y + 2, f"Type: {tool_name}", C_LABEL)
         write_at(stdscr, prop_win.x + 1, prop_win.y + 3, "─" * (prop_win.w - 2), C_BG)
@@ -373,6 +391,16 @@ def draw_properties(stdscr, prop_win, windows, selected_win_idx, selected_ctrl_i
             draw_prop(11,"Items:", 8, ",".join(c.items))
             draw_prop(12,"Idx: ", 9, str(c.list_index))
             
+        if c.tool_type == 14:
+            draw_prop(11,"Intrv:", 7, str(c.interval))
+            
+        if c.tool_type == 3: 
+            write_at(stdscr, prop_win.x + 2, prop_win.y + 11, "Color:", C_LABEL)
+            palette = [12, 13, 14, 15, 16, 17] 
+            for p_idx, p_color in enumerate(palette):
+                # Using spaces forces curses to draw the physical background color blocks properly
+                write_at(stdscr, prop_win.x + 9 + (p_idx * 2), prop_win.y + 11, "  ", curses.color_pair(p_color))
+
     elif selected_win_idx >= 0 and selected_ctrl_idx == -1:
         w = windows[selected_win_idx]
         write_at(stdscr, prop_win.x + 2, prop_win.y + 2, f"Type: Form", C_LABEL)
@@ -619,6 +647,14 @@ def main(stdscr):
     curses.init_pair(9, curses.COLOR_GREEN, curses.COLOR_WHITE)   
     curses.init_pair(10, curses.COLOR_RED, curses.COLOR_WHITE)    
     curses.init_pair(11, curses.COLOR_MAGENTA, curses.COLOR_WHITE)
+    
+    # Custom Button Background Colors
+    curses.init_pair(12, curses.COLOR_BLACK, curses.COLOR_WHITE)   # White BG
+    curses.init_pair(13, curses.COLOR_WHITE, curses.COLOR_BLUE)    # Blue BG
+    curses.init_pair(14, curses.COLOR_BLACK, curses.COLOR_GREEN)   # Green BG
+    curses.init_pair(15, curses.COLOR_WHITE, curses.COLOR_RED)     # Red BG
+    curses.init_pair(16, curses.COLOR_BLACK, curses.COLOR_CYAN)    # Cyan BG
+    curses.init_pair(17, curses.COLOR_WHITE, curses.COLOR_MAGENTA) # Magenta BG
 
     C = {
         'border': curses.color_pair(1) | curses.A_BOLD,
@@ -683,6 +719,7 @@ def main(stdscr):
                     elif editing_prop == 4: c.y = int(edit_buffer)
                     elif editing_prop == 5: c.w = int(edit_buffer)
                     elif editing_prop == 6: c.h = int(edit_buffer)
+                    elif editing_prop == 7: c.interval = int(edit_buffer) if edit_buffer.isdigit() else 1000
                     elif editing_prop == 8: c.items = [s.strip() for s in edit_buffer.split(',')] if edit_buffer else []
                     elif editing_prop == 9: c.list_index = int(edit_buffer) if edit_buffer.lstrip('-').isdigit() else 0
                 except ValueError:
@@ -717,6 +754,19 @@ def main(stdscr):
         box_x = (curses.COLS - box_w) // 2
         box_y = (curses.LINES - box_h) // 2
 
+        if run_mode:
+            current_time_ms = time.time() * 1000
+            for w in windows:
+                for c in w.controls:
+                    if c.tool_type == 14: 
+                        if not hasattr(c, 'last_tick'): c.last_tick = current_time_ms
+                        if current_time_ms - getattr(c, 'last_tick', 0) >= c.interval:
+                            c.last_tick = current_time_ms
+                            fn = f"on_tick_{c.name_id}"
+                            if fn in run_globals:
+                                try: run_globals[fn]()
+                                except Exception as e: run_globals['__msg__'] = f"Timer Error:\n{e}"
+
         current_pressed_idx = -1
         if mouse_down:
             if run_mode and run_pressed_ctrl >= 0:
@@ -731,7 +781,6 @@ def main(stdscr):
             curses.curs_set(1) 
         else:
             if run_mode and run_focused_ctrl >= 0 and windows[0].controls[run_focused_ctrl].tool_type == 13:
-                # Calculate active cursor mapping
                 c = windows[0].controls[run_focused_ctrl]
                 cursor_y = windows[0].y + c.y
                 display_text = c.caption
@@ -768,7 +817,7 @@ def main(stdscr):
                 act_idx = selected_ctrl_idx if (i == selected_win_idx and not run_mode) else -1
                 press_idx = current_pressed_idx if (i == (0 if run_mode else selected_win_idx)) else -1
                 
-                win.draw(stdscr, C, act_idx, press_idx)
+                win.draw(stdscr, C, act_idx, press_idx, run_mode)
                 
                 if i == 1 and not run_mode:
                     draw_properties(stdscr, win, windows, selected_win_idx, selected_ctrl_idx, editing_prop, edit_buffer, C, tools)
@@ -785,9 +834,10 @@ def main(stdscr):
                 _, mx, my, _, bstate = curses.getmouse()
                 mouse_moved = (mx != old_mx or my != old_my)
                 left_click = bool(bstate & curses.BUTTON1_PRESSED) or bool(bstate & curses.BUTTON1_CLICKED)
-                mouse_released = bool(bstate & curses.BUTTON1_RELEASED)
+                right_click = bool(bstate & curses.BUTTON3_PRESSED) or bool(bstate & curses.BUTTON3_CLICKED)
+                mouse_released = bool(bstate & curses.BUTTON1_RELEASED) or bool(bstate & curses.BUTTON3_RELEASED)
 
-                if left_click:
+                if left_click or right_click:
                     current_time = time.time()
                     is_double_click = False
                     if (current_time - last_click_time < 0.4) and (mx == last_click_x and my == last_click_y):
@@ -809,7 +859,7 @@ def main(stdscr):
                             if run_globals.get('__msg__'):
                                 run_globals['__msg__'] = None 
                                 stdscr.clear()
-                            elif 18 <= mx <= 23 and my == 0:
+                            elif 18 <= mx <= 23 and my == 0 and left_click:
                                 run_mode = False
                                 run_focused_ctrl = -1
                                 run_pressed_ctrl = -1
@@ -822,7 +872,7 @@ def main(stdscr):
                                     lx = mx - win.x
                                     ly = my - win.y
                                     
-                                    if lx == win.w - 1 and ly == win.h - 1:
+                                    if lx == win.w - 1 and ly == win.h - 1 and left_click:
                                         resizing_win = 0
                                     else:
                                         idx = win.hit_control(lx, ly)
@@ -830,39 +880,50 @@ def main(stdscr):
                                             c = win.controls[idx]
                                             run_focused_ctrl = idx if c.tool_type in (10, 13) else -1
                                             
-                                            trigger_click = False
-                                            if c.tool_type == 3: 
-                                                run_pressed_ctrl = idx 
-                                            elif c.tool_type == 1: 
-                                                c.value = not c.value
-                                                trigger_click = True
-                                            elif c.tool_type == 11: 
-                                                c.value = True
-                                                parent = win.get_parent_frame(c)
-                                                for other_c in win.controls:
-                                                    if other_c.tool_type == 11 and other_c != c:
-                                                        if win.get_parent_frame(other_c) == parent:
-                                                            other_c.value = False
-                                                trigger_click = True
-                                            elif c.tool_type == 2:
-                                                drop_idx = handle_combobox_dropdown(stdscr, win.x + c.x, win.y + c.y + 1, c.w, c.items, C)
-                                                if drop_idx is not None:
-                                                    c.list_index = drop_idx
+                                            if right_click:
+                                                fn_rclick = f"on_right_click_{c.name_id}"
+                                                if fn_rclick in run_globals:
+                                                    try: run_globals[fn_rclick]()
+                                                    except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
+                                            else:
+                                                trigger_click = False
+                                                if c.tool_type == 3: 
+                                                    run_pressed_ctrl = idx 
+                                                    fn_down = f"button_down_{c.name_id}"
+                                                    if fn_down in run_globals:
+                                                        try: run_globals[fn_down]()
+                                                        except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
+
+                                                elif c.tool_type == 1: 
+                                                    c.value = not c.value
                                                     trigger_click = True
-                                            elif c.tool_type == 10:
-                                                click_r = ly - c.y
-                                                click_idx = c.scroll_offset + click_r
-                                                if 0 <= click_idx < len(c.items):
-                                                    c.list_index = click_idx
+                                                elif c.tool_type == 11: 
+                                                    c.value = True
+                                                    parent = win.get_parent_frame(c)
+                                                    for other_c in win.controls:
+                                                        if other_c.tool_type == 11 and other_c != c:
+                                                            if win.get_parent_frame(other_c) == parent:
+                                                                other_c.value = False
                                                     trigger_click = True
-                                                
-                                            if trigger_click:
-                                                fn = f"on_click_{c.name_id}"
-                                                if fn in run_globals:
-                                                    try:
-                                                        run_globals[fn]()
-                                                    except Exception as e:
-                                                        run_globals['__msg__'] = f"Runtime Error:\n{e}"
+                                                elif c.tool_type == 2:
+                                                    drop_idx = handle_combobox_dropdown(stdscr, win.x + c.x, win.y + c.y + 1, c.w, c.items, C)
+                                                    if drop_idx is not None:
+                                                        c.list_index = drop_idx
+                                                        trigger_click = True
+                                                elif c.tool_type == 10:
+                                                    click_r = ly - c.y
+                                                    click_idx = c.scroll_offset + click_r
+                                                    if 0 <= click_idx < len(c.items):
+                                                        c.list_index = click_idx
+                                                        trigger_click = True
+                                                    
+                                                if trigger_click:
+                                                    fn = f"on_click_{c.name_id}"
+                                                    if fn in run_globals:
+                                                        try:
+                                                            run_globals[fn]()
+                                                        except Exception as e:
+                                                            run_globals['__msg__'] = f"Runtime Error:\n{e}"
                                         else:
                                             run_focused_ctrl = -1
                                             dragged_win = 0
@@ -926,9 +987,12 @@ def main(stdscr):
                                     run_globals['__msg__'] = str(text)
                                 run_globals['msgbox'] = _msgbox
                                 
+                                current_time_ms = time.time() * 1000
                                 for w in windows:
                                     for c in w.controls:
                                         run_globals[c.name_id] = c
+                                        if c.tool_type == 14:
+                                            c.last_tick = current_time_ms
                                 
                                 for w in windows:
                                     for c in w.controls:
@@ -969,8 +1033,16 @@ def main(stdscr):
                                                         if c.tool_type in (1, 11): 
                                                             c.value = not c.value
                                                             clicked_prop_row = False 
+                                                        elif c.tool_type == 14: 
+                                                            editing_prop, edit_buffer = 7, str(c.interval)
                                                         elif c.tool_type in (2, 10): 
                                                             editing_prop, edit_buffer = 8, ",".join(c.items)
+                                                        elif c.tool_type == 3:
+                                                            block_idx = (local_x - 9) // 2
+                                                            palette = [12, 13, 14, 15, 16, 17]
+                                                            if 0 <= block_idx < len(palette):
+                                                                c.bg_color = palette[block_idx]
+                                                            clicked_prop_row = False
                                                         else: 
                                                             clicked_prop_row = False
                                                     elif prop_local_y == 12 and c.tool_type in (2, 10):
@@ -1017,11 +1089,16 @@ def main(stdscr):
                                                                 if child != c and win.get_parent_frame(child) == c:
                                                                     dragged_frame_children.append(child_idx)
                                                         
-                                                        if is_double_click and c.tool_type in (1, 2, 3, 7, 10, 11, 13): 
+                                                        if is_double_click and c.tool_type in (1, 2, 3, 7, 10, 11, 13, 14): 
                                                             code_mode = True
                                                             code_target_ctrl = c
                                                             if not c.code:
-                                                                c.code = f"def on_click_{c.name_id}():\n    pass\n"
+                                                                if c.tool_type == 14:
+                                                                    c.code = f"def on_tick_{c.name_id}():\n    pass\n"
+                                                                elif c.tool_type == 3:
+                                                                    c.code = f"def button_down_{c.name_id}():\n    pass\n\ndef on_button_up_{c.name_id}():\n    pass\n\ndef on_click_{c.name_id}():\n    pass\n\ndef on_right_click_{c.name_id}():\n    pass\n"
+                                                                else:
+                                                                    c.code = f"def on_click_{c.name_id}():\n    pass\n\ndef on_right_click_{c.name_id}():\n    pass\n"
                                                             code_lines = c.code.split("\n")
                                                             code_cy = min(1, len(code_lines)-1)
                                                             code_cx = 4 
@@ -1055,6 +1132,13 @@ def main(stdscr):
                             ly = my - win.y
                             if win.hit_control(lx, ly) == run_pressed_ctrl:
                                 c = win.controls[run_pressed_ctrl]
+                                
+                                if c.tool_type == 3:
+                                    fn_up = f"on_button_up_{c.name_id}"
+                                    if fn_up in run_globals:
+                                        try: run_globals[fn_up]()
+                                        except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
+                                        
                                 fn = f"on_click_{c.name_id}"
                                 if fn in run_globals:
                                     try: run_globals[fn]()
