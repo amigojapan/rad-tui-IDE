@@ -1,0 +1,136 @@
+{
+  "x": 15,
+  "y": 4,
+  "w": 25,
+  "h": 25,
+  "title": "Calculator",
+  "name_id": "Form1",
+  "pinned_topmost": true,
+  "resizable": false,
+  "menus": [
+    {
+      "label": "View",
+      "name": "mnu_view",
+      "code": "def mnu_view_clicked():\n    pass\n",
+      "sub": [
+        {
+          "label": "Standard",
+          "name": "mnu_view_std",
+          "code": "def mnu_view_std_clicked():\n    msgbox(\"Already in Standard view.\")\n",
+          "sub": []
+        }
+      ]
+    },
+    {
+      "label": "Help",
+      "name": "mnu_help",
+      "code": "def mnu_help_clicked():\n    pass\n",
+      "sub": [
+        {
+          "label": "About",
+          "name": "mnu_help_about",
+          "code": "def mnu_help_about_clicked():\n    msgbox(\"TUI Python Calculator\\nBuilt with IDE\")\n",
+          "sub": []
+        }
+      ]
+    }
+  ],
+  "code": "def on_form_load():\n    globals()['current_val'] = \"0\"\n    globals()['stored_val'] = 0.0\n    globals()['op'] = \"\"\n    globals()['new_input'] = True\n    display.caption = \"0\"\n\ndef append_digit(d):\n    if globals()['new_input']:\n        globals()['current_val'] = str(d)\n        globals()['new_input'] = False\n    else:\n        if globals()['current_val'] == \"0\":\n            globals()['current_val'] = str(d)\n        else:\n            if len(globals()['current_val']) < 18:\n                globals()['current_val'] += str(d)\n    display.caption = globals()['current_val']\n\ndef set_op(o):\n    if not globals()['new_input'] and globals()['op']:\n        calculate()\n    globals()['op'] = o\n    globals()['stored_val'] = float(globals()['current_val'])\n    globals()['new_input'] = True\n\ndef calculate():\n    o = globals()['op']\n    if not o: return\n    try:\n        v1 = globals()['stored_val']\n        v2 = float(globals()['current_val'])\n        res = 0.0\n        if o == '+': res = v1 + v2\n        elif o == '-': res = v1 - v2\n        elif o == '*': res = v1 * v2\n        elif o == '/':\n            if v2 == 0:\n                msgbox(\"Cannot divide by zero\")\n                clear_all()\n                return\n            res = v1 / v2\n        res_str = str(res)\n        if res_str.endswith('.0'): res_str = res_str[:-2]\n        globals()['current_val'] = res_str[:18]\n        display.caption = globals()['current_val']\n        globals()['op'] = \"\"\n        globals()['new_input'] = True\n    except Exception as e:\n        msgbox(\"Error: \" + str(e))\n\ndef clear_all():\n    globals()['current_val'] = \"0\"\n    globals()['stored_val'] = 0.0\n    globals()['op'] = \"\"\n    globals()['new_input'] = True\n    display.caption = \"0\"\n\ndef clear_entry():\n    globals()['current_val'] = \"0\"\n    globals()['new_input'] = True\n    display.caption = \"0\"\n\ndef add_dot():\n    if globals()['new_input']:\n        globals()['current_val'] = \"0.\"\n        globals()['new_input'] = False\n    elif \".\" not in globals()['current_val']:\n        globals()['current_val'] += \".\"\n    display.caption = globals()['current_val']\n\nglobals()['append_digit'] = append_digit\nglobals()['set_op'] = set_op\nglobals()['calculate'] = calculate\nglobals()['clear_all'] = clear_all\nglobals()['clear_entry'] = clear_entry\nglobals()['add_dot'] = add_dot\n",
+  "controls": [
+    {
+      "x": 2, "y": 2, "w": 19, "h": 1, "tool_type": 13,
+      "name_id": "display", "caption": "0", "code": "",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 2, "y": 4, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_c", "caption": "C", "code": "def on_click_btn_c():\n    clear_all()\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 15
+    },
+    {
+      "x": 7, "y": 4, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_ce", "caption": "CE", "code": "def on_click_btn_ce():\n    clear_entry()\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 15
+    },
+    {
+      "x": 12, "y": 4, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_div", "caption": "/", "code": "def on_click_btn_div():\n    set_op('/')\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 17, "y": 4, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_mul", "caption": "*", "code": "def on_click_btn_mul():\n    set_op('*')\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 2, "y": 8, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_7", "caption": "7", "code": "def on_click_btn_7():\n    append_digit(7)\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 7, "y": 8, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_8", "caption": "8", "code": "def on_click_btn_8():\n    append_digit(8)\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 12, "y": 8, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_9", "caption": "9", "code": "def on_click_btn_9():\n    append_digit(9)\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 17, "y": 8, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_sub", "caption": "-", "code": "def on_click_btn_sub():\n    set_op('-')\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 2, "y": 12, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_4", "caption": "4", "code": "def on_click_btn_4():\n    append_digit(4)\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 7, "y": 12, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_5", "caption": "5", "code": "def on_click_btn_5():\n    append_digit(5)\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 12, "y": 12, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_6", "caption": "6", "code": "def on_click_btn_6():\n    append_digit(6)\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 17, "y": 12, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_add", "caption": "+", "code": "def on_click_btn_add():\n    set_op('+')\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 2, "y": 16, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_1", "caption": "1", "code": "def on_click_btn_1():\n    append_digit(1)\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 7, "y": 16, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_2", "caption": "2", "code": "def on_click_btn_2():\n    append_digit(2)\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 12, "y": 16, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_3", "caption": "3", "code": "def on_click_btn_3():\n    append_digit(3)\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 17, "y": 16, "w": 4, "h": 7, "tool_type": 3,
+      "name_id": "btn_eq", "caption": "=", "code": "def on_click_btn_eq():\n    calculate()\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 14
+    },
+    {
+      "x": 2, "y": 20, "w": 9, "h": 3, "tool_type": 3,
+      "name_id": "btn_0", "caption": "0", "code": "def on_click_btn_0():\n    append_digit(0)\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    },
+    {
+      "x": 12, "y": 20, "w": 4, "h": 3, "tool_type": 3,
+      "name_id": "btn_dot", "caption": ".", "code": "def on_click_btn_dot():\n    add_dot()\n",
+      "value": false, "items": [], "list_index": 0, "scroll_offset": 0, "interval": 1000, "bg_color": 12
+    }
+  ]
+}

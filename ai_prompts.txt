@@ -15,15 +15,30 @@ make an example minesweeper for this system 10 by 10 buttons with random 10 bomb
 
 --done
 
-add an on_button_up() event,
-add a on_right_click() event
+add an on_button_up() event. 
+add a on_right_click() event. 
+make the background color propertie of buttons settabl. 
 
-
-
+now, for a moment forget about the IDE, and think of this sample json code, 
+please fix it so that it does the following(this code is the minesweeper for my VBDOS clone IDE):
 change all hte on_click events to on_button_up events please
 make it so that when people click with the rigth mouse button, it shoudl make a flag with teh caption F on that button, if the caption is already there then clear it back to an empty string
 
+I have included a file with the latest vesion of my IDE. please modify it and do the following:
+if the user clicks on a window it should come to the foreground of the ohter windows, unless marked as pinned_topmost in hte form properties window as a checkbox. also, add a property to the propperties window of forms called "resizable widows" which shoudl be checked by default, but if this is not checked, the form should not be resizable.
+add a parameter when i run the IDE, I ususallyy run it like this python3 rad-tui-py.py, but I want to be able to run it like this: python3 rad-tui-py.py -run script.json     , this shoudl run script.json in run mode.
+also add a menu editing window in design mode only, which will allow me to define the top menu in runmode(but make sure the [stop] option is always visible too.the menu editor whould have an option to call teh code window, and input a function per each menu option as mnu_something_clicked() where somethign is the name of the menu option selected.some menu option should be allowed to have submenu options.
 
-make the background color propertie of buttons settable
 
-if a bomb explodes set the backround color of that button to red
+try to make the menu editor more visual, using existing components like a windows, and buttons isnetad of prompting for keypresses, also use combo boxes for each menu, and each submenu should ahve it's own combo box
+
+that seems ok except for the buttons must have meaningful captions like Add menu , Delete menu and OK, you made all the button captions in the menu editor into "Button" , please fix that
+
+ms2.json if a bomb explodes set the backround color of that button to red
+--done
+
+add on_form_load() event to the form of the IDE, also when you double click on the background of the form, it should being up the code window with the definition of on_form_load()
+chadge the menu editor so that the sub menus also appear in the top menu combo box. maybe with a small "..." as indentation to know it is a sub menu, and what level, I wnat htis so that sub menus can also h ave submenus. wil it work this way?
+change the lable Top level menus to "selected menu" 
+
+
