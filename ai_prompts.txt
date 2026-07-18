@@ -40,9 +40,33 @@ ms2.json if a bomb explodes set the backround color of that button to red
 add on_form_load() event to the form of the IDE, also when you double click on the background of the form, it should being up the code window with the definition of on_form_load()
 chadge the menu editor so that the sub menus also appear in the top menu combo box. maybe with a small "..." as indentation to know it is a sub menu, and what level, I wnat htis so that sub menus can also h ave submenus. wil it work this way?
 change the lable Top level menus to "selected menu" 
---done
 add 2 properties to text boxes, to enable horizontal and vertical scrollbars on the text box to be able to navigate large portions of text, for example in a text editor
-
 make a calculator.json example file with a calculator simillar to the windwos calc.exe but for my IDE
 
+add a function to load anohter form.
+add a property for text boxes to highlight python code.
+add a feature to select text in text areas using hte mouse.
+make it so that if you right click a text area you get a pop up menu of copy and paste and select all.
 
+
+make a text editor for my IDE, using a big size textbox with vertical and horizontal slidebars. the text area should highlight python code. make a file menu the file menu should ocntain sumbenues of Save, Save AS, give me an editor.json result
+
+
+in the IDE, do the collowing:
+add a feature that allows to hide a form.
+add an event to the idea callen on_form_resize() which executes when the form is resized.
+make the scroll wheel of hte mouse also scroll the text area the mouse is over.
+make the tab key add 4 spaces indented into teh code of hte current text area if nothign is selected. but if something is selected have it add 4 spaces to every line that is selected.
+make shift+tab remove 4 spaces form the current line if nothing is selected, but if anythign is selected make it remove 4 spaces from all the selected lines. 
+
+--done
+
+also add to the IDE the ability to select text in the text areas by holding down the shift key and pressing any arrow key should allow to select text.
+
+make a .json example, with a file dialog, if it is on windows show drives ina  combo box, ohterwise dont. make this dialogue pinned on top.
+
+integrate the file dialogue for hte file picker, the save as shoudl bring up  the file dialogue that we made before and saves in a json file. also have an Aquit option., when save or cancel is clickced hide the file picker.
+make the menues actually do what they are supposed to, not just show msgboxes sayign what htey shoudl do,
+
+
+make the textarea adapt to teh size of the form when teh on_form_resize() function is called.

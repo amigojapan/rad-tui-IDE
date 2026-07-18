@@ -1,0 +1,53 @@
+{
+  "x": 10,
+  "y": 2,
+  "w": 60,
+  "h": 22,
+  "title": "Python Editor",
+  "name_id": "Form1",
+  "pinned_topmost": true,
+  "resizable": true,
+  "menus": [
+    {
+      "label": "File",
+      "name": "mnu_file",
+      "code": "def mnu_file_clicked():\n    pass\n",
+      "sub": [
+        {
+          "label": "Save",
+          "name": "mnu_file_save",
+          "code": "def mnu_file_save_clicked():\n    msgbox(\"Save functionality would go here!\")\n",
+          "sub": []
+        },
+        {
+          "label": "Save As...",
+          "name": "mnu_file_save_as",
+          "code": "def mnu_file_save_as_clicked():\n    msgbox(\"Save As functionality would go here!\")\n",
+          "sub": []
+        }
+      ]
+    }
+  ],
+  "code": "def on_form_load():\n    pass\n",
+  "controls": [
+    {
+      "x": 1,
+      "y": 1,
+      "w": 58,
+      "h": 19,
+      "tool_type": 13,
+      "name_id": "txt_editor",
+      "caption": "def hello_world():\n    # This is a sample python script\n    print(\"Hello, World!\")\n    \n    for i in range(10):\n        if i % 2 == 0:\n            print(f\"{i} is even\")\n        else:\n            print(f\"{i} is odd\")\n\nclass TextEditor:\n    def __init__(self):\n        self.is_awesome = True\n        self.language = \"Python\"\n\n# Try selecting this text with your mouse.\n# Then right-click to copy and paste!\n# \n# You can also drag the horizontal and \n# vertical scrollbars to navigate large files.\n",
+      "code": "",
+      "value": false,
+      "items": [],
+      "list_index": 0,
+      "scroll_offset": 0,
+      "interval": 1000,
+      "bg_color": 12,
+      "h_scroll": true,
+      "v_scroll": true,
+      "syntax_hl": true
+    }
+  ]
+}
