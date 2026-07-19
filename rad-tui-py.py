@@ -1128,7 +1128,14 @@ def main(stdscr):
                                                 elif c.tool_type == 10:
                                                     click_idx = c.scroll_offset + (ly - c.y)
                                                     if 0 <= click_idx < len(c.items):
-                                                        c.list_index, trigger_click = click_idx, True
+                                                        c.list_index = click_idx
+                                                        if is_double_click:
+                                                            fn_dbl = f"on_double_click_{c.name_id}"
+                                                            if fn_dbl in run_globals:
+                                                                try: run_globals[fn_dbl]()
+                                                                except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
+                                                        else:
+                                                            trigger_click = True
                                                     
                                                 if trigger_click:
                                                     fn = f"on_click_{c.name_id}"
@@ -1572,6 +1579,10 @@ def main(stdscr):
                             if c.list_index >= c.scroll_offset + c.h: c.scroll_offset = c.list_index - c.h + 1
                             if f"on_click_{c.name_id}" in run_globals:
                                 try: run_globals[f"on_click_{c.name_id}"]()
+                                except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
+                        elif ch in (10, 13, curses.KEY_ENTER):
+                            if f"on_enter_{c.name_id}" in run_globals:
+                                try: run_globals[f"on_enter_{c.name_id}"]()
                                 except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
 
             elif not run_mode:

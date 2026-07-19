@@ -59,14 +59,17 @@ make the scroll wheel of hte mouse also scroll the text area the mouse is over.
 make the tab key add 4 spaces indented into teh code of hte current text area if nothign is selected. but if something is selected have it add 4 spaces to every line that is selected.
 make shift+tab remove 4 spaces form the current line if nothing is selected, but if anythign is selected make it remove 4 spaces from all the selected lines. 
 
---done
+
 
 also add to the IDE the ability to select text in the text areas by holding down the shift key and pressing any arrow key should allow to select text.
 
-make a .json example, with a file dialog, if it is on windows show drives ina  combo box, ohterwise dont. make this dialogue pinned on top.
+--done
 
-integrate the file dialogue for hte file picker, the save as shoudl bring up  the file dialogue that we made before and saves in a json file. also have an Aquit option., when save or cancel is clickced hide the file picker.
-make the menues actually do what they are supposed to, not just show msgboxes sayign what htey shoudl do,
+make a .json example, with a file dialog, if it is on windows show drives in a  combo box, ohterwise dont. make this dialogue pinned on top.
+
+in the text editor json,
+integrate the file dialogue for hte file picker, use the function to load anohter form we added earlier to load it form a json file. the save as shoudl bring up  the file dialogue that we made before and saves in a json file. also have an a quit option., when save or cancel is clickced hide the file picker.
+make the menues actually do what they are supposed to, not just show msgboxes sayign what htey shoudl do, 
 
 
 make the textarea adapt to teh size of the form when teh on_form_resize() function is called.

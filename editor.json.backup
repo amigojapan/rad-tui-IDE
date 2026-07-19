@@ -16,25 +16,19 @@
         {
           "label": "Save",
           "name": "mnu_file_save",
-          "code": "def mnu_file_save_clicked():\n    import sys\n    filename = getattr(sys, '_shared_filename', 'untitled.py')\n    try:\n        with open(filename, 'w') as f:\n            f.write(txt_editor.caption)\n        msgbox(f'Saved successfully to {filename}')\n    except Exception as e:\n        msgbox(f'Save Error: {e}')\n",
+          "code": "def mnu_file_save_clicked():\n    msgbox(\"Save functionality would go here!\")\n",
           "sub": []
         },
         {
           "label": "Save As...",
           "name": "mnu_file_save_as",
-          "code": "def mnu_file_save_as_clicked():\n    import sys\n    sys._shared_editor_text = txt_editor.caption\n    load_form('filedialogue.json')\n",
-          "sub": []
-        },
-        {
-          "label": "Quit",
-          "name": "mnu_file_quit",
-          "code": "def mnu_file_quit_clicked():\n    import sys\n    sys.exit(0)\n",
+          "code": "def mnu_file_save_as_clicked():\n    msgbox(\"Save As functionality would go here!\")\n",
           "sub": []
         }
       ]
     }
   ],
-  "code": "def on_form_load():\n    import sys\n    # Restore text if returning from the Save As dialog\n    if hasattr(sys, '_shared_editor_text'):\n        txt_editor.caption = sys._shared_editor_text\n\ndef on_form_resize():\n    txt_editor.w = Form1.w - 2\n    txt_editor.h = Form1.h - 3\n",
+  "code": "def on_form_load():\n    pass\n",
   "controls": [
     {
       "x": 1,
