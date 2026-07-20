@@ -8,7 +8,7 @@ import argparse
 import os
 
 # ==========================================================
-# VB1-DOS Clone: Python curses IDE (editor.json Integration)
+# VB1-DOS Clone: Python curses IDE (filedialogue.json Integ)
 # ==========================================================
 
 PYTHON_KEYWORDS = {
@@ -709,6 +709,9 @@ def insert_text_at_cursor(c, text):
     c.caption = "\n".join(lines)
 
 def main(stdscr):
+    # Absolute root directory setup for stable internal loads
+    setattr(sys, '_ide_dir', os.getcwd())
+    
     curses.curs_set(0)
     stdscr.nodelay(True)
     curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
@@ -739,8 +742,6 @@ def main(stdscr):
     tools = Toolbox(0, 1)
     main_form = Window(17, 1, 41, 18, "Form 1", "Form1")
     prop_win = Window(48, 8, 22, 14, "Properties", "Properties")
-    
-    # Keep the Properties window structurally topmost from creation
     prop_win.pinned_topmost = True
     
     windows = [main_form, prop_win]
@@ -800,20 +801,18 @@ def main(stdscr):
 
     def launch_editor_json_for_code(target_ctrl_obj, form_ref, wins_list, glb_dict):
         try:
-            with open('editor.json', 'r', encoding='utf-8') as f: ed_data = json.load(f)
+            ide_dir = getattr(sys, '_ide_dir', os.getcwd())
+            with open(os.path.join(ide_dir, 'editor.json'), 'r', encoding='utf-8') as f: ed_data = json.load(f)
             editor_f = Window.from_dict(ed_data)
             
-            # Inject widget's code into the editor's text area
             for ctrl in editor_f.controls:
                 if ctrl.name_id == 'txt_editor':
                     ctrl.caption = getattr(target_ctrl_obj, 'code', '')
                     
-            # Intercept Save click directly inside editor_f's memory
             for m, _, _ in flatten_menus(editor_f.menus):
                 if m.name == 'mnu_file_save':
                     m.code = "def mnu_file_save_clicked():\n    import sys\n    sys._exit_code_editor = True\n"
             
-            # Setup State (Pass the direct reference, do NOT deepcopy it here!)
             backup = form_ref 
             old_f = form_ref
             for idx, w in enumerate(wins_list):
@@ -822,6 +821,37 @@ def main(stdscr):
             setattr(sys, '_exit_code_editor', False)
             init_run_mode(editor_f, glb_dict)
             return editor_f, backup, target_ctrl_obj
+        except Exception as e:
+            return None, None, e
+
+    def launch_filedialogue_for_ide(mode, form_ref, wins_list, glb_dict):
+        try:
+            ide_dir = getattr(sys, '_ide_dir', os.getcwd())
+            with open(os.path.join(ide_dir, 'filedialogue.json'), 'r', encoding='utf-8') as f:
+                fd_data = json.load(f)
+            fd_form = Window.from_dict(fd_data)
+            
+            for ctrl in fd_form.controls:
+                if ctrl.name_id == 'btn_ok':
+                    ctrl.code = "def on_click_btn_ok():\n    import sys, os\n    if txt_filename.caption:\n        sys._ide_dialogue_result = os.path.join(os.getcwd(), txt_filename.caption)\n        sys._exit_file_dialogue = True\n    else:\n        msgbox(\"Please select a file.\")\n"
+                elif ctrl.name_id == 'btn_cancel':
+                    ctrl.code = "def on_click_btn_cancel():\n    import sys\n    sys._exit_file_dialogue = True\n"
+            
+            proj_dir = os.path.join(ide_dir, 'projects')
+            if not os.path.exists(proj_dir): os.makedirs(proj_dir)
+            os.chdir(proj_dir)
+            
+            backup = form_ref 
+            old_f = form_ref
+            for idx, w in enumerate(wins_list):
+                if w is old_f: wins_list[idx] = fd_form; break
+            
+            setattr(sys, '_file_dialogue_mode', mode)
+            setattr(sys, '_exit_file_dialogue', False)
+            setattr(sys, '_ide_dialogue_result', None)
+            
+            init_run_mode(fd_form, glb_dict)
+            return fd_form, backup, None
         except Exception as e:
             return None, None, e
 
@@ -884,12 +914,45 @@ def main(stdscr):
                     code_target_ctrl = None
                 run_mode = False
                 setattr(sys, '_exit_code_editor', False)
-                # FIX: Swap back the direct form reference instead of deep-copying it again
                 old_form, main_form = main_form, design_backup 
                 for idx, w in enumerate(windows):
                     if w is old_form: windows[idx] = main_form; break
                 selected_win, selected_ctrl_idx = main_form, -1
                 stdscr.clear()
+
+            # Handle IDE file dialogue exit (hijacked from "Action" btn in filedialogue.json)
+            if getattr(sys, '_exit_file_dialogue', False):
+                filepath = getattr(sys, '_ide_dialogue_result', None)
+                setattr(sys, '_exit_file_dialogue', False)
+                run_mode = False
+                
+                old_form, main_form = main_form, design_backup 
+                for idx, w in enumerate(windows):
+                    if w is old_form: windows[idx] = main_form; break
+                selected_win, selected_ctrl_idx = main_form, -1
+                stdscr.clear()
+                
+                os.chdir(getattr(sys, '_ide_dir', os.getcwd()))
+
+                if filepath:
+                    mode = getattr(sys, '_file_dialogue_mode', 'load')
+                    if mode == 'save':
+                        if not filepath.endswith('.json'): filepath += '.json'
+                        try:
+                            with open(filepath, 'w', encoding='utf-8') as f: json.dump(main_form.to_dict(), f, indent=2)
+                            show_sync_msgbox(stdscr, f"Project saved to {filepath}", C)
+                        except Exception as e: show_sync_msgbox(stdscr, f"Save Error:\n{e}", C)
+                    elif mode == 'load':
+                        if not filepath.endswith('.json'): filepath += '.json'
+                        try:
+                            with open(filepath, 'r', encoding='utf-8') as f: data = json.load(f)
+                            old_form, main_form = main_form, Window.from_dict(data)
+                            for idx, w in enumerate(windows):
+                                if w is old_form: windows[idx] = main_form; break
+                            selected_win, selected_ctrl_idx = main_form, -1
+                            design_backup = main_form
+                            show_sync_msgbox(stdscr, f"Project loaded from {filepath}", C)
+                        except Exception as e: show_sync_msgbox(stdscr, f"Load Error:\n{e}", C)
             
             # Process dynamic queued forms loading (Save/Load hooks)
             if queued_form_to_load:
@@ -951,7 +1014,6 @@ def main(stdscr):
             press_idx = current_pressed_idx if ((run_mode and win is main_form) or (not run_mode and win is selected_win)) else -1
             
             if win.name_id == "Properties" and not run_mode:
-                # Dynamic property height calculation
                 def get_prop_h(swin, sidx):
                     if swin is None: return 5
                     if sidx >= 0:
@@ -1180,25 +1242,17 @@ def main(stdscr):
                             if not clicked_handled and 1 <= mx <= 5 and my == 0:
                                 choice = handle_file_menu(stdscr, C)
                                 if choice == 'save':
-                                    fname = prompt_input(stdscr, "Save Project As (*.json)", C)
-                                    if fname:
-                                        if not fname.endswith('.json'): fname += '.json'
-                                        try:
-                                            with open(fname, 'w', encoding='utf-8') as f: json.dump(main_form.to_dict(), f, indent=2)
-                                            show_sync_msgbox(stdscr, f"Project saved to {fname}", C)
-                                        except Exception as e: show_sync_msgbox(stdscr, f"Save Error:\n{e}", C)
+                                    fd_form, bak, err = launch_filedialogue_for_ide('save', main_form, windows, run_globals)
+                                    if fd_form:
+                                        main_form, design_backup = fd_form, bak
+                                        run_mode, run_focused_ctrl = True, -1
+                                    else: show_sync_msgbox(stdscr, f"Could not load filedialogue.json:\n{err}", C)
                                 elif choice == 'load':
-                                    fname = prompt_input(stdscr, "Load Project (*.json)", C)
-                                    if fname:
-                                        if not fname.endswith('.json'): fname += '.json'
-                                        try:
-                                            with open(fname, 'r', encoding='utf-8') as f: data = json.load(f)
-                                            old_form, main_form = main_form, Window.from_dict(data)
-                                            for idx, w in enumerate(windows):
-                                                if w is old_form: windows[idx] = main_form; break
-                                            selected_win, selected_ctrl_idx = main_form, -1
-                                            show_sync_msgbox(stdscr, f"Project loaded from {fname}", C)
-                                        except Exception as e: show_sync_msgbox(stdscr, f"Load Error:\n{e}", C)
+                                    fd_form, bak, err = launch_filedialogue_for_ide('load', main_form, windows, run_globals)
+                                    if fd_form:
+                                        main_form, design_backup = fd_form, bak
+                                        run_mode, run_focused_ctrl = True, -1
+                                    else: show_sync_msgbox(stdscr, f"Could not load filedialogue.json:\n{err}", C)
                                 elif choice == 'exit': return 
                                 stdscr.clear()
                                 clicked_handled = True
@@ -1217,7 +1271,7 @@ def main(stdscr):
                                         main_form, design_backup, code_target_ctrl = ed_form, bak, tgt
                                         run_mode, run_focused_ctrl = True, -1
                                         stdscr.clear()
-                                    else: show_sync_msgbox(stdscr, f"Could not load editor.json:\\n{tgt}", C)
+                                    else: show_sync_msgbox(stdscr, f"Could not load editor.json:\n{tgt}", C)
                                 stdscr.clear()
                                 clicked_handled = True
 
@@ -1310,7 +1364,7 @@ def main(stdscr):
                                                                 main_form, design_backup, code_target_ctrl = ed_form, bak, tgt
                                                                 run_mode, run_focused_ctrl = True, -1
                                                                 stdscr.clear()
-                                                            else: show_sync_msgbox(stdscr, f"Could not load editor.json:\\n{tgt}", C)
+                                                            else: show_sync_msgbox(stdscr, f"Could not load editor.json:\n{tgt}", C)
                                                 if not matched_control:
                                                     # Hook editor.json for Forms
                                                     if is_double_click and win is main_form:
@@ -1320,7 +1374,7 @@ def main(stdscr):
                                                             main_form, design_backup, code_target_ctrl = ed_form, bak, tgt
                                                             run_mode, run_focused_ctrl = True, -1
                                                             stdscr.clear()
-                                                        else: show_sync_msgbox(stdscr, f"Could not load editor.json:\\n{tgt}", C)
+                                                        else: show_sync_msgbox(stdscr, f"Could not load editor.json:\n{tgt}", C)
                                                     elif local_x == win.w - 1 and local_y == win.h - 1 and win.resizable:
                                                         resizing_win, selected_win, selected_ctrl_idx, hit_window = win, win, -1, True
                                                         break

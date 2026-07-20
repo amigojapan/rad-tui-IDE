@@ -5,9 +5,10 @@ import copy
 import json
 import sys
 import argparse
+import os
 
 # ==========================================================
-# VB1-DOS Clone: Python curses IDE (Colors & New Events)
+# VB1-DOS Clone: Python curses IDE (editor.json Integration)
 # ==========================================================
 
 PYTHON_KEYWORDS = {
@@ -463,51 +464,6 @@ def draw_properties(stdscr, prop_win, selected_win, selected_ctrl_idx, editing_p
     else:
         write_at(stdscr, prop_win.x + 2, prop_win.y + 2, "No selection.", C_LABEL)
 
-def draw_code_editor(stdscr, lines, cy, cx, target_name, box_x, box_y, box_w, box_h, colors):
-    C_BORDER, C_BG = colors['border'], colors['bg']
-    write_at(stdscr, box_x, box_y, "┌" + "─" * (box_w - 2) + "┐", C_BORDER)
-    for i in range(1, box_h - 1):
-        write_at(stdscr, box_x, box_y + i, "│", C_BORDER)
-        write_at(stdscr, box_x + box_w - 1, box_y + i, "│", C_BORDER)
-        
-        line_idx = i - 1
-        if line_idx < len(lines):
-            line_text = lines[line_idx]
-            tokens = tokenize_python(line_text)
-            curr_x = box_x + 1
-            chars_printed = 0
-            
-            for text_chunk, ttype in tokens:
-                if chars_printed >= box_w - 2: break
-                space_left = (box_w - 2) - chars_printed
-                render_str = text_chunk[:space_left]
-                
-                attr = C_BG
-                if ttype == 'keyword': attr = colors['kw']
-                elif ttype == 'string': attr = colors['str']
-                elif ttype == 'number': attr = colors['num']
-                elif ttype == 'comment': attr = colors['comment']
-                
-                write_at(stdscr, curr_x, box_y + i, render_str, attr)
-                curr_x += len(render_str)
-                chars_printed += len(render_str)
-            
-            if chars_printed < box_w - 2:
-                write_at(stdscr, curr_x, box_y + i, " " * ((box_w - 2) - chars_printed), C_BG)
-        else:
-            write_at(stdscr, box_x + 1, box_y + i, " " * (box_w - 2), C_BG)
-            
-    write_at(stdscr, box_x, box_y + box_h - 1, "└" + "─" * (box_w - 2) + "┘", C_BORDER)
-    title = f" Code: {target_name} "
-    write_at(stdscr, box_x + (box_w - len(title))//2, box_y, title, C_BORDER)
-    write_at(stdscr, box_x + box_w - 4, box_y, "[X]", C_BORDER)
-
-    if cy < box_h - 2:
-        real_x = box_x + 1 + min(cx, box_w - 3)
-        real_y = box_y + 1 + cy
-        try: stdscr.move(real_y, real_x)
-        except curses.error: pass
-
 def handle_combobox_dropdown(stdscr, dx, dy, w, items, colors):
     if not items: return None
     C_BORDER, C_BG, C_HL = colors['border'], colors['bg'], colors['handle']
@@ -784,8 +740,7 @@ def main(stdscr):
     main_form = Window(17, 1, 41, 18, "Form 1", "Form1")
     prop_win = Window(48, 8, 22, 14, "Properties", "Properties")
     
-    # FIX: By defining the Properties window as topmost from the start, 
-    # it won't disappear behind the main_form when clicked during the z-order sorting.
+    # Keep the Properties window structurally topmost from creation
     prop_win.pinned_topmost = True
     
     windows = [main_form, prop_win]
@@ -800,9 +755,10 @@ def main(stdscr):
     dragged_tool = resizing_ctrl = mouse_down = False
     last_click_time, last_click_x, last_click_y = 0.0, -1, -1
     
-    code_mode, code_lines, code_cx, code_cy, code_target_ctrl = False, [], 0, 0, None
     run_mode = False
     run_globals = {}
+    code_target_ctrl = None
+    
     run_focused_ctrl = run_pressed_ctrl = run_drag_scroll_v = run_drag_scroll_h = run_drag_select_text = -1 
     design_backup = queued_form_to_load = None
 
@@ -821,7 +777,6 @@ def main(stdscr):
         current_time_ms = time.time() * 1000
         
         for w in [target_form]:
-            # THIS IS THE FIX: Inject the form itself into the runtime globals!
             run_globals_dict[w.name_id] = w
             
             if w.code:
@@ -843,33 +798,32 @@ def main(stdscr):
             try: run_globals_dict["on_form_load"]()
             except Exception as e: _msgbox(f"Runtime Error:\n{e}")
 
-    # def init_run_mode(target_form, run_globals_dict):
-    #     run_globals_dict.clear()
-    #     run_globals_dict['__msg__'] = None
-    #     def _msgbox(text): run_globals_dict['__msg__'] = str(text)
-    #     run_globals_dict['msgbox'] = _msgbox
-    #     run_globals_dict['load_form'] = trigger_load_form
-    #     current_time_ms = time.time() * 1000
-        
-    #     for w in [target_form]:
-    #         if w.code:
-    #             try: exec(w.code, run_globals_dict)
-    #             except Exception as e: _msgbox(f"Compile Error in {w.name_id}:\n{e}")
-    #         for c in w.controls:
-    #             run_globals_dict[c.name_id] = c
-    #             if c.tool_type == 14: c.last_tick = current_time_ms
-    #             if c.code:
-    #                 try: exec(c.code, run_globals_dict)
-    #                 except Exception as e: _msgbox(f"Compile Error in {c.name_id}:\n{e}")
+    def launch_editor_json_for_code(target_ctrl_obj, form_ref, wins_list, glb_dict):
+        try:
+            with open('editor.json', 'r', encoding='utf-8') as f: ed_data = json.load(f)
+            editor_f = Window.from_dict(ed_data)
+            
+            # Inject widget's code into the editor's text area
+            for ctrl in editor_f.controls:
+                if ctrl.name_id == 'txt_editor':
+                    ctrl.caption = getattr(target_ctrl_obj, 'code', '')
                     
-    #     for m, _, _ in flatten_menus(target_form.menus):
-    #         if m.code:
-    #             try: exec(m.code, run_globals_dict)
-    #             except Exception as e: _msgbox(f"Compile Error in {m.name_id}:\n{e}")
-                
-    #    if "on_form_load" in run_globals_dict:
-    #        try: run_globals_dict["on_form_load"]()
-    #        except Exception as e: _msgbox(f"Runtime Error:\n{e}")
+            # Intercept Save click directly inside editor_f's memory
+            for m, _, _ in flatten_menus(editor_f.menus):
+                if m.name == 'mnu_file_save':
+                    m.code = "def mnu_file_save_clicked():\n    import sys\n    sys._exit_code_editor = True\n"
+            
+            # Setup State (Pass the direct reference, do NOT deepcopy it here!)
+            backup = form_ref 
+            old_f = form_ref
+            for idx, w in enumerate(wins_list):
+                if w is old_f: wins_list[idx] = editor_f; break
+            
+            setattr(sys, '_exit_code_editor', False)
+            init_run_mode(editor_f, glb_dict)
+            return editor_f, backup, target_ctrl_obj
+        except Exception as e:
+            return None, None, e
 
     def commit_edit():
         nonlocal editing_prop, edit_buffer, selected_win, selected_ctrl_idx
@@ -922,6 +876,22 @@ def main(stdscr):
         box_x, box_y = (curses.COLS - box_w) // 2, (curses.LINES - box_h) // 2
 
         if run_mode:
+            # Handle user code editor exit (hijacked from "Save" menu event in editor.json)
+            if getattr(sys, '_exit_code_editor', False):
+                if code_target_ctrl is not None:
+                    if 'txt_editor' in run_globals:
+                        code_target_ctrl.code = run_globals['txt_editor'].caption
+                    code_target_ctrl = None
+                run_mode = False
+                setattr(sys, '_exit_code_editor', False)
+                # FIX: Swap back the direct form reference instead of deep-copying it again
+                old_form, main_form = main_form, design_backup 
+                for idx, w in enumerate(windows):
+                    if w is old_form: windows[idx] = main_form; break
+                selected_win, selected_ctrl_idx = main_form, -1
+                stdscr.clear()
+            
+            # Process dynamic queued forms loading (Save/Load hooks)
             if queued_form_to_load:
                 fname = queued_form_to_load
                 queued_form_to_load = None
@@ -957,52 +927,65 @@ def main(stdscr):
             elif not run_mode and dragged_ctrl >= 0:
                 current_pressed_idx = dragged_ctrl
 
-        if code_mode:
-            draw_code_editor(stdscr, code_lines, code_cy, code_cx, code_target_ctrl.name_id, box_x, box_y, box_w, box_h, C)
-            curses.curs_set(1) 
+        menu_positions, stop_pos = [], (0, 0)
+        if run_mode:
+            write_at(stdscr, 0, 0, " " * curses.COLS, C['handle'])
+            menu_x = 1
+            for m in main_form.menus:
+                lbl = f" {m.label} "
+                write_at(stdscr, menu_x, 0, lbl, C['handle'])
+                menu_positions.append((menu_x, menu_x + len(lbl), m))
+                menu_x += len(lbl)
+            stop_lbl = " [STOP] "
+            menu_x += 2
+            write_at(stdscr, menu_x, 0, stop_lbl, C['handle'])
+            stop_pos = (menu_x, menu_x + len(stop_lbl))
         else:
-            menu_positions, stop_pos = [], (0, 0)
-            if run_mode:
-                write_at(stdscr, 0, 0, " " * curses.COLS, C['handle'])
-                menu_x = 1
-                for m in main_form.menus:
-                    lbl = f" {m.label} "
-                    write_at(stdscr, menu_x, 0, lbl, C['handle'])
-                    menu_positions.append((menu_x, menu_x + len(lbl), m))
-                    menu_x += len(lbl)
-                stop_lbl = " [STOP] "
-                menu_x += 2
-                write_at(stdscr, menu_x, 0, stop_lbl, C['handle'])
-                stop_pos = (menu_x, menu_x + len(stop_lbl))
-            else:
-                menu_str = " File  Edit  View [RUN ] Menu Editor  Options"
-                write_at(stdscr, 0, 0, menu_str + " " * max(0, curses.COLS - len(menu_str)), C['handle'])
-                tools.draw(stdscr, C)
+            menu_str = " File  Edit  View [RUN ] Menu Editor  Options"
+            write_at(stdscr, 0, 0, menu_str + " " * max(0, curses.COLS - len(menu_str)), C['handle'])
+        
+        # Render Windows
+        for win in windows:
+            if run_mode and win != main_form: continue
+            act_idx = selected_ctrl_idx if (win is selected_win and not run_mode) else -1
+            press_idx = current_pressed_idx if ((run_mode and win is main_form) or (not run_mode and win is selected_win)) else -1
             
-            for win in windows:
-                if run_mode and win != main_form: continue
-                act_idx = selected_ctrl_idx if (win is selected_win and not run_mode) else -1
-                press_idx = current_pressed_idx if ((run_mode and win is main_form) or (not run_mode and win is selected_win)) else -1
+            if win.name_id == "Properties" and not run_mode:
+                # Dynamic property height calculation
+                def get_prop_h(swin, sidx):
+                    if swin is None: return 5
+                    if sidx >= 0:
+                        t = swin.controls[sidx].tool_type
+                        if t in (1, 11, 14, 3): return 13
+                        if t in (2, 10): return 14
+                        if t == 13: return 15
+                        return 12
+                    return 15
+                win.h = get_prop_h(selected_win, selected_ctrl_idx)
                 win.draw(stdscr, C, act_idx, press_idx, run_mode)
-                if win.name_id == "Properties" and not run_mode:
-                    draw_properties(stdscr, win, selected_win, selected_ctrl_idx, editing_prop, edit_buffer, C, tools)
+                draw_properties(stdscr, win, selected_win, selected_ctrl_idx, editing_prop, edit_buffer, C, tools)
+            else:
+                win.draw(stdscr, C, act_idx, press_idx, run_mode)
 
-            if run_mode and run_globals.get('__msg__'): draw_msgbox(stdscr, run_globals['__msg__'], C)
+        # Draw Tools completely ON TOP of all windows
+        if not run_mode:
+            tools.draw(stdscr, C)
 
-            if not code_mode:
-                if run_mode and run_focused_ctrl >= 0 and not main_form.hidden and main_form.controls[run_focused_ctrl].tool_type == 13:
-                    c = main_form.controls[run_focused_ctrl]
-                    vw, vh = max(1, c.w - (1 if c.v_scroll else 0)), max(1, c.h - (1 if c.h_scroll else 0))
-                    screen_cx, screen_cy = main_form.x + c.x + (c.cursor_x - c.scroll_x), main_form.y + c.y + (c.cursor_y - c.scroll_y)
-                    if (0 <= c.cursor_x - c.scroll_x < vw) and (0 <= c.cursor_y - c.scroll_y < vh):
-                        if (main_form.y < screen_cy < main_form.y + main_form.h - 1 and main_form.x < screen_cx < main_form.x + main_form.w - 1):
-                            try:
-                                stdscr.move(screen_cy, screen_cx)
-                                curses.curs_set(1)
-                            except curses.error: curses.curs_set(0)
-                        else: curses.curs_set(0)
-                    else: curses.curs_set(0)
+        if run_mode and run_globals.get('__msg__'): draw_msgbox(stdscr, run_globals['__msg__'], C)
+
+        if run_mode and run_focused_ctrl >= 0 and not main_form.hidden and main_form.controls[run_focused_ctrl].tool_type == 13:
+            c = main_form.controls[run_focused_ctrl]
+            vw, vh = max(1, c.w - (1 if c.v_scroll else 0)), max(1, c.h - (1 if c.h_scroll else 0))
+            screen_cx, screen_cy = main_form.x + c.x + (c.cursor_x - c.scroll_x), main_form.y + c.y + (c.cursor_y - c.scroll_y)
+            if (0 <= c.cursor_x - c.scroll_x < vw) and (0 <= c.cursor_y - c.scroll_y < vh):
+                if (main_form.y < screen_cy < main_form.y + main_form.h - 1 and main_form.x < screen_cx < main_form.x + main_form.w - 1):
+                    try:
+                        stdscr.move(screen_cy, screen_cx)
+                        curses.curs_set(1)
+                    except curses.error: curses.curs_set(0)
                 else: curses.curs_set(0)
+            else: curses.curs_set(0)
+        else: curses.curs_set(0)
 
         stdscr.refresh()
         ch = stdscr.getch()
@@ -1035,8 +1018,9 @@ def main(stdscr):
                                 if scroll_up: c.scroll_y = max(0, c.scroll_y - 1)
                                 if scroll_down: c.scroll_y = min(max(0, len(c.caption.split('\n')) - vh), c.scroll_y + 1)
                             elif c.tool_type == 10: 
+                                c_h_safe = max(1, c.h)
                                 if scroll_up: c.scroll_offset = max(0, c.scroll_offset - 1)
-                                if scroll_down: c.scroll_offset = min(max(0, len(c.items) - c.h), c.scroll_offset + 1)
+                                if scroll_down: c.scroll_offset = min(max(0, len(c.items) - c_h_safe), c.scroll_offset + 1)
 
                 elif left_click or right_click:
                     current_time = time.time()
@@ -1045,12 +1029,7 @@ def main(stdscr):
 
                     if not mouse_down:
                         mouse_down = True
-                        if code_mode:
-                            if box_x + box_w - 5 <= mx <= box_x + box_w - 1 and my == box_y:
-                                code_target_ctrl.code = "\n".join(code_lines)
-                                code_mode = False
-                                stdscr.clear()
-                        elif run_mode:
+                        if run_mode:
                             if run_globals.get('__msg__'):
                                 run_globals['__msg__'] = None 
                                 stdscr.clear()
@@ -1185,13 +1164,20 @@ def main(stdscr):
                         else:
                             clicked_handled = clicked_prop_row = False
                             prop_local_y = my - prop_win.y
-                            if prop_win.hit_test(mx, my):
-                                if selected_ctrl_idx >= 0 and 5 <= prop_local_y <= 13: clicked_prop_row = True
-                                elif selected_ctrl_idx == -1 and selected_win is not None and 5 <= prop_local_y <= 13: clicked_prop_row = True
+                            
+                            # INTERCEPT TOOLS CLICK FIRST (Because it draws on top)
+                            if tools.x <= mx < tools.x + tools.w and tools.y <= my < tools.y + tools.h:
+                                if not tools.process_click(mx, my):
+                                    dragged_tool, drag_offset_x, drag_offset_y = True, mx - tools.x, my - tools.y
+                                clicked_handled = True
+                            
+                            elif prop_win.hit_test(mx, my):
+                                if selected_ctrl_idx >= 0 and 5 <= prop_local_y <= prop_win.h - 2: clicked_prop_row = True
+                                elif selected_ctrl_idx == -1 and selected_win is not None and 5 <= prop_local_y <= prop_win.h - 2: clicked_prop_row = True
                             
                             if not clicked_prop_row: commit_edit()
 
-                            if 1 <= mx <= 5 and my == 0:
+                            if not clicked_handled and 1 <= mx <= 5 and my == 0:
                                 choice = handle_file_menu(stdscr, C)
                                 if choice == 'save':
                                     fname = prompt_input(stdscr, "Save Project As (*.json)", C)
@@ -1217,26 +1203,24 @@ def main(stdscr):
                                 stdscr.clear()
                                 clicked_handled = True
 
-                            elif 18 <= mx <= 23 and my == 0:
+                            elif not clicked_handled and 18 <= mx <= 23 and my == 0:
                                 design_backup, run_mode, run_focused_ctrl = copy.deepcopy(main_form), True, -1
                                 stdscr.clear()
                                 init_run_mode(main_form, run_globals)
                                 clicked_handled = True
 
-                            elif 25 <= mx <= 36 and my == 0:
+                            elif not clicked_handled and 25 <= mx <= 36 and my == 0:
                                 action, item = menu_editor_loop(stdscr, main_form, C)
                                 if action == 'edit_code' and item:
-                                    code_mode, code_target_ctrl = True, item
-                                    code_lines = item.code.split("\n")
-                                    code_cy, code_cx = min(1, len(code_lines)-1), 4 
+                                    ed_form, bak, tgt = launch_editor_json_for_code(item, main_form, windows, run_globals)
+                                    if ed_form:
+                                        main_form, design_backup, code_target_ctrl = ed_form, bak, tgt
+                                        run_mode, run_focused_ctrl = True, -1
+                                        stdscr.clear()
+                                    else: show_sync_msgbox(stdscr, f"Could not load editor.json:\\n{tgt}", C)
                                 stdscr.clear()
                                 clicked_handled = True
 
-                            elif tools.x <= mx < tools.x + tools.w and tools.y <= my < tools.y + tools.h:
-                                if not tools.process_click(mx, my):
-                                    dragged_tool, drag_offset_x, drag_offset_y = True, mx - tools.x, my - tools.y
-                                clicked_handled = True
-                                
                             if not clicked_handled:
                                 hit_window = False
                                 for win_search_idx in range(len(windows)-1, -1, -1): 
@@ -1314,22 +1298,29 @@ def main(stdscr):
                                                             for child_idx, child in enumerate(win.controls):
                                                                 if child != c and win.get_parent_frame(child) == c: dragged_frame_children.append(child_idx)
                                                         
+                                                        # Hook editor.json for controls
                                                         if is_double_click and c.tool_type in (1, 2, 3, 7, 10, 11, 13, 14): 
-                                                            code_mode, code_target_ctrl = True, c
                                                             if not c.code:
                                                                 if c.tool_type == 14: c.code = f"def on_tick_{c.name_id}():\n    pass\n"
                                                                 elif c.tool_type == 3: c.code = f"def button_down_{c.name_id}():\n    pass\n\ndef on_button_up_{c.name_id}():\n    pass\n\ndef on_click_{c.name_id}():\n    pass\n\ndef on_right_click_{c.name_id}():\n    pass\n"
                                                                 else: c.code = f"def on_click_{c.name_id}():\n    pass\n\ndef on_right_click_{c.name_id}():\n    pass\n"
-                                                            code_lines = c.code.split("\n")
-                                                            code_cy, code_cx = min(1, len(code_lines)-1), 4 
-                                                            stdscr.clear()
+                                                                
+                                                            ed_form, bak, tgt = launch_editor_json_for_code(c, main_form, windows, run_globals)
+                                                            if ed_form:
+                                                                main_form, design_backup, code_target_ctrl = ed_form, bak, tgt
+                                                                run_mode, run_focused_ctrl = True, -1
+                                                                stdscr.clear()
+                                                            else: show_sync_msgbox(stdscr, f"Could not load editor.json:\\n{tgt}", C)
                                                 if not matched_control:
+                                                    # Hook editor.json for Forms
                                                     if is_double_click and win is main_form:
-                                                        code_mode, code_target_ctrl = True, win
                                                         if not getattr(win, 'code', None): win.code = f"def on_form_load():\n    pass\n"
-                                                        code_lines = win.code.split("\n")
-                                                        code_cy, code_cx = min(1, len(code_lines)-1), 4 
-                                                        stdscr.clear()
+                                                        ed_form, bak, tgt = launch_editor_json_for_code(win, main_form, windows, run_globals)
+                                                        if ed_form:
+                                                            main_form, design_backup, code_target_ctrl = ed_form, bak, tgt
+                                                            run_mode, run_focused_ctrl = True, -1
+                                                            stdscr.clear()
+                                                        else: show_sync_msgbox(stdscr, f"Could not load editor.json:\\n{tgt}", C)
                                                     elif local_x == win.w - 1 and local_y == win.h - 1 and win.resizable:
                                                         resizing_win, selected_win, selected_ctrl_idx, hit_window = win, win, -1, True
                                                         break
@@ -1364,7 +1355,7 @@ def main(stdscr):
                     dragged_ctrl = run_pressed_ctrl = run_drag_scroll_v = run_drag_scroll_h = run_drag_select_text = -1
                     dragged_frame_children = []
 
-                if mouse_down and mouse_moved and not code_mode:
+                if mouse_down and mouse_moved:
                     stdscr.clear() 
                     if run_mode:
                         if run_drag_scroll_v >= 0:
@@ -1422,40 +1413,9 @@ def main(stdscr):
                 old_mx, old_my = mx, my
             except curses.error: pass
 
-        elif ch == 27 and not code_mode: break
+        elif ch == 27: break
         elif ch != -1:
-            if code_mode:
-                if ch == curses.KEY_UP:
-                    code_cy = max(0, code_cy - 1)
-                    code_cx = min(code_cx, len(code_lines[code_cy]))
-                elif ch == curses.KEY_DOWN:
-                    code_cy = min(len(code_lines) - 1, code_cy + 1)
-                    code_cx = min(code_cx, len(code_lines[code_cy]))
-                elif ch == curses.KEY_LEFT:
-                    if code_cx > 0: code_cx -= 1
-                elif ch == curses.KEY_RIGHT:
-                    if code_cx < len(code_lines[code_cy]): code_cx += 1
-                elif ch in (10, 13, curses.KEY_ENTER):
-                    left_part, right_part = code_lines[code_cy][:code_cx], code_lines[code_cy][code_cx:]
-                    code_lines[code_cy] = left_part
-                    code_lines.insert(code_cy + 1, right_part)
-                    code_cy, code_cx = code_cy + 1, 0
-                    stdscr.clear() 
-                elif ch in (8, 127, curses.KEY_BACKSPACE):
-                    if code_cx > 0:
-                        code_lines[code_cy] = code_lines[code_cy][:code_cx-1] + code_lines[code_cy][code_cx:]
-                        code_cx -= 1
-                    elif code_cy > 0:
-                        code_cx = len(code_lines[code_cy-1])
-                        code_lines[code_cy-1] += code_lines[code_cy]
-                        code_lines.pop(code_cy)
-                        code_cy -= 1
-                        stdscr.clear()
-                elif 32 <= ch <= 126:
-                    code_lines[code_cy] = code_lines[code_cy][:code_cx] + chr(ch) + code_lines[code_cy][code_cx:]
-                    code_cx += 1
-
-            elif run_mode:
+            if run_mode:
                 if run_focused_ctrl >= 0:
                     c = main_form.controls[run_focused_ctrl]
                     if c.tool_type == 13: 
@@ -1490,17 +1450,12 @@ def main(stdscr):
                                 c.cursor_x = len(lines[c.cursor_y])
                             c.sel_end = (c.cursor_y, c.cursor_x)
                         elif ch in (getattr(curses, 'KEY_SDOWN', 337), 337, 548):
-                            #print("Shift+UP")
                             if c.sel_start is None: c.sel_start = (c.cursor_y, c.cursor_x)
                             c.cursor_y = max(0, c.cursor_y - 1)
                             actual_x = min(c.cursor_x, len(lines[c.cursor_y]))
                             c.sel_end = (c.cursor_y, actual_x)
-
                         elif ch in (getattr(curses, 'KEY_SUP', 336), 336, 547):
-                            #print("Shift+DOWN")
-                            if c.sel_start is None: 
-                                c.sel_start = (c.cursor_y, c.cursor_x)
-                            # Move the cursor DOWN by adding 1 to the current Y position
+                            if c.sel_start is None: c.sel_start = (c.cursor_y, c.cursor_x)
                             c.cursor_y =min(len(lines) - 1, c.cursor_y + 1)
                             actual_x = min(c.cursor_x, len(lines[c.cursor_y]))
                             c.sel_end = (c.cursor_y, actual_x)
@@ -1511,26 +1466,6 @@ def main(stdscr):
                                 c.cursor_y += 1
                                 c.cursor_x = 0
                             c.sel_end = (c.cursor_y, c.cursor_x)
-                        elif ch in (getattr(curses, 'KEY_SR', 336), getattr(curses, 'KEY_SUP', 336), 336, 547):
-                            pass
-                            #this actually fires when shift down anmd shift up are pressed is pressed print("press down")
-                            #if c.sel_start is None: c.sel_start = (c.cursor_y, c.cursor_x)
-                            #c.cursor_y = max(0, c.cursor_y - 1)
-                            #actual_x = min(c.cursor_x, len(lines[c.cursor_y]))
-                            #c.sel_end = (c.cursor_y, actual_x)
-                        # elif ch in (getattr(curses, 'KEY_SF', 337), getattr(curses, 'KEY_SDOWN', 337), 337, 548):
-                        #     if c.sel_start is None: c.sel_start = (c.cursor_y, c.cursor_x)
-                        #     c.cursor_y = min(len(lines) - 1, c.cursor_y + 1)
-                        #     actual_x = min(c.cursor_x, len(lines[c.cursor_y]))
-                        #     c.sel_end = (c.cursor_y, actual_x)
-                        elif ch in (getattr(curses, 'KEY_SF', 337), getattr(curses, 'KEY_SDOWN', 337), 337, 548):
-                            pass
-                            #if c.sel_start is None: 
-                            #    c.sel_start = (c.cursor_y, c.cursor_x)
-                            # Move the cursor DOWN by adding 1 to the current Y position
-                            #c.cursor_y =c.cursor_y - 1 #min(len(lines) - 1, c.cursor_y + 1)
-                            #actual_x = min(c.cursor_x, len(lines[c.cursor_y]))
-                            #c.sel_end = (c.cursor_y, actual_x)
                         elif ch == 9:
                             if c.sel_start and c.sel_end and c.sel_start != c.sel_end:
                                 sy, sx = c.sel_start

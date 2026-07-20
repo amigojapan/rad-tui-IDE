@@ -1,0 +1,66 @@
+{
+  "x": 0,
+  "y": 1,
+  "w": 91,
+  "h": 29,
+  "title": "Tsukino Editor",
+  "name_id": "Form1",
+  "pinned_topmost": true,
+  "resizable": true,
+  "hidden": false,
+  "menus": [
+    {
+      "label": "File",
+      "name": "mnu_file",
+      "code": "def mnu_file_clicked():\n    pass\n",
+      "sub": [
+        {
+          "label": "Load...",
+          "name": "mnu_file_load",
+          "code": "def mnu_file_load_clicked():\n    import sys\n    sys._file_dialogue_mode = 'load'\n    load_form('filedialogue.json')\n",
+          "sub": []
+        },
+        {
+          "label": "Save",
+          "name": "mnu_file_save",
+          "code": "def mnu_file_save_clicked():\n    import sys\n    filename = getattr(sys, '_shared_filename', 'untitled.py')\n    try:\n        with open(filename, 'w') as f:\n            f.write(txt_editor.caption)\n        msgbox(f'Saved successfully to {filename}')\n    except Exception as e:\n        msgbox(f'Save Error: {e}')\n",
+          "sub": []
+        },
+        {
+          "label": "Save As...",
+          "name": "mnu_file_save_as",
+          "code": "def mnu_file_save_as_clicked():\n    import sys\n    sys._shared_editor_text = txt_editor.caption\n    sys._file_dialogue_mode = 'save'\n    load_form('filedialogue.json')\n",
+          "sub": []
+        },
+        {
+          "label": "Quit",
+          "name": "mnu_file_quit",
+          "code": "def mnu_file_quit_clicked():\n    import sys\n    sys.exit(0)\n",
+          "sub": []
+        }
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "x": 1,
+      "y": 1,
+      "w": 89,
+      "h": 27,
+      "tool_type": 13,
+      "name_id": "txt_editor",
+      "caption": "",
+      "code": "",
+      "value": false,
+      "items": [],
+      "list_index": 0,
+      "scroll_offset": 0,
+      "interval": 1000,
+      "bg_color": 12,
+      "h_scroll": true,
+      "v_scroll": true,
+      "syntax_hl": true
+    }
+  ],
+  "code": "def on_form_load():\n    import sys\n    if hasattr(sys, '_shared_load_file'):\n        try:\n            with open(sys._shared_load_file, 'r') as f:\n                txt_editor.caption = f.read()\n            sys._shared_filename = sys._shared_load_file\n            del sys._shared_load_file\n        except Exception as e:\n            msgbox(f'Error loading file:\\n{e}')\n    elif hasattr(sys, '_shared_editor_text'):\n        txt_editor.caption = sys._shared_editor_text\n\ndef on_form_resize():\n    txt_editor.w = Form1.w - 2\n    txt_editor.h = Form1.h - 3\n"
+}
