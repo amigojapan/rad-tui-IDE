@@ -75,12 +75,22 @@ make the textarea adapt to teh size of the form when teh on_form_resize() functi
 
 add a new menu under the latest editor.json(which I am including now), the menu should be Load , which loads a file opens a file in the text area.
 
---done
+
 
 I will include hte most new editor.json and filedialogue.json
 the file load menu does not work... I want it to use filedialog.jason but when loaded it shoudl change  the caption  of the button from Save to Load, and it shoudl load the file and put it in the textarea, can  you make filedialogue usable bogth as Save as and Load dialogue depending on which menu called it please?
+
 
 make the properties and tools windows be pinned to the top, cause I cant see them when the form is made really big
 make the properties window expand down to fit all the properites available for hte current selected widget.
 use editor.json as the editor for code in the IDE instead of the usual code editign window, when click save, instead of saving just go back to the design mode.
 make the scrollwheel also scroll listsboxes up and down
+
+--done
+
+use filedialog.json in the IDE the way you did in the editor to load projects and do save as for projects. have it default to the projects subdirectory of the project's directory. do the fixes to the IDE and give me the full listing of the IDE
+
+
+add a "Save Project" option to the menu of the IDE, this should save the project with the same name as it was opened.
+add a function to the IDE called END() which will end the program if executed form run, but will return to design mode if it is not run wiht -run.
+if it is run wiht -run make the menu option [stop] dissapear
