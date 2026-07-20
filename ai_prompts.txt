@@ -86,11 +86,15 @@ make the properties window expand down to fit all the properites available for h
 use editor.json as the editor for code in the IDE instead of the usual code editign window, when click save, instead of saving just go back to the design mode.
 make the scrollwheel also scroll listsboxes up and down
 
---done
 
 use filedialog.json in the IDE the way you did in the editor to load projects and do save as for projects. have it default to the projects subdirectory of the project's directory. do the fixes to the IDE and give me the full listing of the IDE
+
+--done
 
 
 add a "Save Project" option to the menu of the IDE, this should save the project with the same name as it was opened.
 add a function to the IDE called END() which will end the program if executed form run, but will return to design mode if it is not run wiht -run.
 if it is run wiht -run make the menu option [stop] dissapear
+
+
+feature for editor.json, add in submenu when rigth clicking, comment likes and uncomment lines, which shoudl comment all lines selected and uncommet all lines selected by adding  or removing # fromt he beginning of every line selected
