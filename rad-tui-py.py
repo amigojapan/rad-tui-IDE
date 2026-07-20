@@ -8,7 +8,7 @@ import argparse
 import os
 
 # ==========================================================
-# VB1-DOS Clone: Python curses IDE (filedialogue.json Integ)
+# VB1-DOS Clone: Python curses IDE (Scroll Fixes)
 # ==========================================================
 
 PYTHON_KEYWORDS = {
@@ -83,12 +83,24 @@ class UIControl:
         self.h_scroll = False
         self.v_scroll = False
         self.syntax_hl = False
+        self.editable = True
         self.scroll_x = 0
         self.scroll_y = 0
         self.cursor_x = 0
         self.cursor_y = 0
         self.sel_start = None
         self.sel_end = None
+
+    def scroll_to_bottom(self):
+        if self.tool_type == 13:
+            lines = self.caption.split('\n')
+            vh = max(1, self.h - (1 if self.h_scroll else 0))
+            if len(lines) > vh:
+                self.scroll_y = len(lines) - vh
+            else:
+                self.scroll_y = 0
+            self.cursor_y = max(0, len(lines) - 1)
+            self.cursor_x = len(lines[-1]) if lines else 0
 
     def to_dict(self):
         return {
@@ -98,7 +110,7 @@ class UIControl:
             'items': self.items, 'list_index': self.list_index, 
             'scroll_offset': self.scroll_offset, 'interval': self.interval,
             'bg_color': self.bg_color, 'h_scroll': self.h_scroll, 'v_scroll': self.v_scroll,
-            'syntax_hl': self.syntax_hl
+            'syntax_hl': self.syntax_hl, 'editable': self.editable
         }
 
     @classmethod
@@ -114,6 +126,7 @@ class UIControl:
         c.h_scroll = data.get('h_scroll', False)
         c.v_scroll = data.get('v_scroll', False)
         c.syntax_hl = data.get('syntax_hl', False)
+        c.editable = data.get('editable', True)
         return c
 
 class Window:
@@ -442,7 +455,8 @@ def draw_properties(stdscr, prop_win, selected_win, selected_ctrl_idx, editing_p
         if c.tool_type == 13:
             draw_prop(11,"HScroll:", 7, "[X]" if c.h_scroll else "[ ]")
             draw_prop(12,"VScroll:", 8, "[X]" if c.v_scroll else "[ ]")
-            draw_prop(13,"SyntaxHL:", 10, "[X]" if c.syntax_hl else "[ ]")
+            draw_prop(13,"SyntaxHL:", 10, "[X]" if getattr(c, 'syntax_hl', False) else "[ ]")
+            draw_prop(14,"Editable:", 11, "[X]" if getattr(c, 'editable', True) else "[ ]")
         if c.tool_type == 3: 
             write_at(stdscr, prop_win.x + 2, prop_win.y + 11, "Color:", C_LABEL)
             palette = [12, 13, 14, 15, 16, 17] 
@@ -536,8 +550,8 @@ def show_sync_msgbox(stdscr, msg, colors):
 
 def handle_file_menu(stdscr, colors):
     C_BORDER, C_BG = colors['border'], colors['bg']
-    menu_items = [" Save Project As... ", " Load Project...    ", " Exit IDE           "]
-    w, h, x, y = 22, len(menu_items) + 2, 1, 1
+    menu_items = [" Save Project       ", " Save Project As... ", " Load Project...    ", " Exit IDE           "]
+    w, h, x, y = 24, len(menu_items) + 2, 1, 1
     write_at(stdscr, x, y, "┌" + "─" * (w - 2) + "┐", C_BORDER)
     for i, item in enumerate(menu_items):
         write_at(stdscr, x, y + i + 1, "│", C_BORDER)
@@ -554,8 +568,9 @@ def handle_file_menu(stdscr, colors):
                     if x < mx < x + w and y < my < y + h:
                         idx = my - y - 1
                         if idx == 0: return 'save'
-                        if idx == 1: return 'load'
-                        if idx == 2: return 'exit'
+                        if idx == 1: return 'save_as'
+                        if idx == 2: return 'load'
+                        if idx == 3: return 'exit'
                     return None
             except curses.error: pass
         elif ch == 27: return None
@@ -709,7 +724,6 @@ def insert_text_at_cursor(c, text):
     c.caption = "\n".join(lines)
 
 def main(stdscr):
-    # Absolute root directory setup for stable internal loads
     setattr(sys, '_ide_dir', os.getcwd())
     
     curses.curs_set(0)
@@ -746,6 +760,7 @@ def main(stdscr):
     
     windows = [main_form, prop_win]
     IDE_CLIPBOARD = ""
+    CURRENT_PROJECT_FILE = None
 
     selected_win, selected_ctrl_idx = main_form, -1
     editing_prop, edit_buffer = 0, ""
@@ -763,6 +778,13 @@ def main(stdscr):
     run_focused_ctrl = run_pressed_ctrl = run_drag_scroll_v = run_drag_scroll_h = run_drag_select_text = -1 
     design_backup = queued_form_to_load = None
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-run", help="Path to JSON")
+    parser.add_argument("design_file", nargs="?", help="Path to JSON to load in design mode")
+    args, _ = parser.parse_known_args()
+    
+    sys._is_standalone_run = bool(args.run)
+
     def trigger_load_form(fname): nonlocal queued_form_to_load; queued_form_to_load = fname
     def trigger_resize(win):
         if run_mode and "on_form_resize" in run_globals:
@@ -772,14 +794,22 @@ def main(stdscr):
     def init_run_mode(target_form, run_globals_dict):
         run_globals_dict.clear()
         run_globals_dict['__msg__'] = None
+        
         def _msgbox(text): run_globals_dict['__msg__'] = str(text)
+        def _ide_end():
+            if getattr(sys, '_is_standalone_run', False):
+                sys.exit(0)
+            else:
+                setattr(sys, '_exit_run_mode', True)
+                
         run_globals_dict['msgbox'] = _msgbox
         run_globals_dict['load_form'] = trigger_load_form
+        run_globals_dict['END'] = _ide_end
+        
         current_time_ms = time.time() * 1000
         
         for w in [target_form]:
             run_globals_dict[w.name_id] = w
-            
             if w.code:
                 try: exec(w.code, run_globals_dict)
                 except Exception as e: _msgbox(f"Compile Error in {w.name_id}:\n{e}")
@@ -887,9 +917,6 @@ def main(stdscr):
                 w.x, w.y = max(0, min(w.x, curses.COLS - w.w)), max(1, min(w.y, curses.LINES - w.h))
         editing_prop = 0
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-run", help="Path to JSON")
-    args, _ = parser.parse_known_args()
     if args.run:
         try:
             with open(args.run, 'r', encoding='utf-8') as f: data = json.load(f)
@@ -897,6 +924,13 @@ def main(stdscr):
             windows[0], design_backup = main_form, copy.deepcopy(main_form)
             run_mode, run_focused_ctrl = True, -1
             init_run_mode(main_form, run_globals)
+        except Exception: pass
+    elif args.design_file:
+        try:
+            with open(args.design_file, 'r', encoding='utf-8') as f: data = json.load(f)
+            main_form = Window.from_dict(data)
+            windows[0] = main_form
+            CURRENT_PROJECT_FILE = args.design_file
         except Exception: pass
 
     stdscr.clear()
@@ -906,7 +940,18 @@ def main(stdscr):
         box_x, box_y = (curses.COLS - box_w) // 2, (curses.LINES - box_h) // 2
 
         if run_mode:
-            # Handle user code editor exit (hijacked from "Save" menu event in editor.json)
+            # Handle END() function execution from script
+            if getattr(sys, '_exit_run_mode', False):
+                setattr(sys, '_exit_run_mode', False)
+                run_mode = False
+                old_form, main_form = main_form, design_backup
+                for idx, w in enumerate(windows):
+                    if w is old_form: windows[idx] = main_form; break
+                selected_win, selected_ctrl_idx = main_form, -1
+                run_focused_ctrl = run_pressed_ctrl = run_drag_scroll_v = run_drag_scroll_h = run_drag_select_text = -1
+                stdscr.clear()
+
+            # Handle user code editor exit
             if getattr(sys, '_exit_code_editor', False):
                 if code_target_ctrl is not None:
                     if 'txt_editor' in run_globals:
@@ -920,7 +965,7 @@ def main(stdscr):
                 selected_win, selected_ctrl_idx = main_form, -1
                 stdscr.clear()
 
-            # Handle IDE file dialogue exit (hijacked from "Action" btn in filedialogue.json)
+            # Handle IDE file dialogue exit
             if getattr(sys, '_exit_file_dialogue', False):
                 filepath = getattr(sys, '_ide_dialogue_result', None)
                 setattr(sys, '_exit_file_dialogue', False)
@@ -940,6 +985,7 @@ def main(stdscr):
                         if not filepath.endswith('.json'): filepath += '.json'
                         try:
                             with open(filepath, 'w', encoding='utf-8') as f: json.dump(main_form.to_dict(), f, indent=2)
+                            CURRENT_PROJECT_FILE = filepath
                             show_sync_msgbox(stdscr, f"Project saved to {filepath}", C)
                         except Exception as e: show_sync_msgbox(stdscr, f"Save Error:\n{e}", C)
                     elif mode == 'load':
@@ -951,10 +997,10 @@ def main(stdscr):
                                 if w is old_form: windows[idx] = main_form; break
                             selected_win, selected_ctrl_idx = main_form, -1
                             design_backup = main_form
+                            CURRENT_PROJECT_FILE = filepath
                             show_sync_msgbox(stdscr, f"Project loaded from {filepath}", C)
                         except Exception as e: show_sync_msgbox(stdscr, f"Load Error:\n{e}", C)
             
-            # Process dynamic queued forms loading (Save/Load hooks)
             if queued_form_to_load:
                 fname = queued_form_to_load
                 queued_form_to_load = None
@@ -999,15 +1045,19 @@ def main(stdscr):
                 write_at(stdscr, menu_x, 0, lbl, C['handle'])
                 menu_positions.append((menu_x, menu_x + len(lbl), m))
                 menu_x += len(lbl)
-            stop_lbl = " [STOP] "
-            menu_x += 2
-            write_at(stdscr, menu_x, 0, stop_lbl, C['handle'])
-            stop_pos = (menu_x, menu_x + len(stop_lbl))
+                
+            # Render [STOP] button UNLESS explicitly launched natively as a standalone app via -run
+            if not getattr(sys, '_is_standalone_run', False):
+                stop_lbl = " [STOP] "
+                menu_x += 2
+                write_at(stdscr, menu_x, 0, stop_lbl, C['handle'])
+                stop_pos = (menu_x, menu_x + len(stop_lbl))
+            else:
+                stop_pos = (0, 0)
         else:
             menu_str = " File  Edit  View [RUN ] Menu Editor  Options"
             write_at(stdscr, 0, 0, menu_str + " " * max(0, curses.COLS - len(menu_str)), C['handle'])
         
-        # Render Windows
         for win in windows:
             if run_mode and win != main_form: continue
             act_idx = selected_ctrl_idx if (win is selected_win and not run_mode) else -1
@@ -1020,7 +1070,7 @@ def main(stdscr):
                         t = swin.controls[sidx].tool_type
                         if t in (1, 11, 14, 3): return 13
                         if t in (2, 10): return 14
-                        if t == 13: return 15
+                        if t == 13: return 16
                         return 12
                     return 15
                 win.h = get_prop_h(selected_win, selected_ctrl_idx)
@@ -1029,7 +1079,6 @@ def main(stdscr):
             else:
                 win.draw(stdscr, C, act_idx, press_idx, run_mode)
 
-        # Draw Tools completely ON TOP of all windows
         if not run_mode:
             tools.draw(stdscr, C)
 
@@ -1069,7 +1118,8 @@ def main(stdscr):
                 if scroll_up or scroll_down:
                     hit_win = None
                     for w in reversed(windows):
-                        if (not run_mode or not w.hidden) and w.hit_test(mx, my): hit_win = w; break
+                        if run_mode and w != main_form: continue
+                        if w.hit_test(mx, my) and not w.hidden: hit_win = w; break
                     if hit_win:
                         lx, ly = mx - hit_win.x, my - hit_win.y
                         c_idx = hit_win.hit_control(lx, ly)
@@ -1095,7 +1145,7 @@ def main(stdscr):
                             if run_globals.get('__msg__'):
                                 run_globals['__msg__'] = None 
                                 stdscr.clear()
-                            elif stop_pos[0] <= mx < stop_pos[1] and my == 0 and left_click:
+                            elif stop_pos[0] <= mx < stop_pos[1] and my == 0 and left_click and not getattr(sys, '_is_standalone_run', False):
                                 run_mode = False
                                 run_focused_ctrl = run_pressed_ctrl = run_drag_scroll_v = run_drag_scroll_h = run_drag_select_text = -1
                                 if design_backup is not None:
@@ -1153,7 +1203,8 @@ def main(stdscr):
                                                                 elif r == ey: sel_lines.append(lines[r][:ex])
                                                                 else: sel_lines.append(lines[r])
                                                             IDE_CLIPBOARD = "\n".join(sel_lines)
-                                                    elif action == 1: insert_text_at_cursor(c, IDE_CLIPBOARD)
+                                                    elif action == 1 and getattr(c, 'editable', True): 
+                                                        insert_text_at_cursor(c, IDE_CLIPBOARD)
                                                     elif action == 2: 
                                                         lines = c.caption.split('\n')
                                                         c.sel_start, c.sel_end = (0, 0), (max(0, len(lines)-1), len(lines[-1]))
@@ -1227,7 +1278,6 @@ def main(stdscr):
                             clicked_handled = clicked_prop_row = False
                             prop_local_y = my - prop_win.y
                             
-                            # INTERCEPT TOOLS CLICK FIRST (Because it draws on top)
                             if tools.x <= mx < tools.x + tools.w and tools.y <= my < tools.y + tools.h:
                                 if not tools.process_click(mx, my):
                                     dragged_tool, drag_offset_x, drag_offset_y = True, mx - tools.x, my - tools.y
@@ -1242,6 +1292,14 @@ def main(stdscr):
                             if not clicked_handled and 1 <= mx <= 5 and my == 0:
                                 choice = handle_file_menu(stdscr, C)
                                 if choice == 'save':
+                                    if CURRENT_PROJECT_FILE:
+                                        try:
+                                            with open(CURRENT_PROJECT_FILE, 'w', encoding='utf-8') as f: json.dump(main_form.to_dict(), f, indent=2)
+                                            show_sync_msgbox(stdscr, f"Project saved to {CURRENT_PROJECT_FILE}", C)
+                                        except Exception as e: show_sync_msgbox(stdscr, f"Save Error:\n{e}", C)
+                                    else:
+                                        choice = 'save_as' 
+                                if choice == 'save_as':
                                     fd_form, bak, err = launch_filedialogue_for_ide('save', main_form, windows, run_globals)
                                     if fd_form:
                                         main_form, design_backup = fd_form, bak
@@ -1317,6 +1375,9 @@ def main(stdscr):
                                                         else: clicked_prop_row = False
                                                     elif prop_local_y == 13:
                                                         if c.tool_type == 13: c.syntax_hl, clicked_prop_row = not c.syntax_hl, False
+                                                        else: clicked_prop_row = False
+                                                    elif prop_local_y == 14:
+                                                        if c.tool_type == 13: c.editable, clicked_prop_row = not c.editable, False
                                                         else: clicked_prop_row = False
                                                     else: clicked_prop_row = False
                                                 elif selected_win is not None:
@@ -1520,70 +1581,72 @@ def main(stdscr):
                                 c.cursor_y += 1
                                 c.cursor_x = 0
                             c.sel_end = (c.cursor_y, c.cursor_x)
-                        elif ch == 9:
-                            if c.sel_start and c.sel_end and c.sel_start != c.sel_end:
-                                sy, sx = c.sel_start
-                                ey, ex = c.sel_end
-                                if (sy, sx) > (ey, ex): sy, sx, ey, ex = ey, ex, sy, sx
-                                for r in range(sy, ey + 1): lines[r] = "    " + lines[r]
-                                c.sel_start, c.sel_end = (sy, sx + 4), (ey, ex + 4)
-                                c.cursor_x += 4
-                            else:
-                                lines[c.cursor_y] = lines[c.cursor_y][:c.cursor_x] + "    " + lines[c.cursor_y][c.cursor_x:]
-                                c.cursor_x += 4
-                                c.sel_start = c.sel_end = None
-                            c.caption = "\n".join(lines)
-                        elif ch == curses.KEY_BTAB or ch == 353:
-                            if c.sel_start and c.sel_end and c.sel_start != c.sel_end:
-                                sy, sx = c.sel_start
-                                ey, ex = c.sel_end
-                                if (sy, sx) > (ey, ex): sy, sx, ey, ex = ey, ex, sy, sx
-                                for r in range(sy, ey + 1):
+                            
+                        if getattr(c, 'editable', True):
+                            if ch == 9:
+                                if c.sel_start and c.sel_end and c.sel_start != c.sel_end:
+                                    sy, sx = c.sel_start
+                                    ey, ex = c.sel_end
+                                    if (sy, sx) > (ey, ex): sy, sx, ey, ex = ey, ex, sy, sx
+                                    for r in range(sy, ey + 1): lines[r] = "    " + lines[r]
+                                    c.sel_start, c.sel_end = (sy, sx + 4), (ey, ex + 4)
+                                    c.cursor_x += 4
+                                else:
+                                    lines[c.cursor_y] = lines[c.cursor_y][:c.cursor_x] + "    " + lines[c.cursor_y][c.cursor_x:]
+                                    c.cursor_x += 4
+                                    c.sel_start = c.sel_end = None
+                                c.caption = "\n".join(lines)
+                            elif ch == curses.KEY_BTAB or ch == 353:
+                                if c.sel_start and c.sel_end and c.sel_start != c.sel_end:
+                                    sy, sx = c.sel_start
+                                    ey, ex = c.sel_end
+                                    if (sy, sx) > (ey, ex): sy, sx, ey, ex = ey, ex, sy, sx
+                                    for r in range(sy, ey + 1):
+                                        spaces = len(lines[r]) - len(lines[r].lstrip(' '))
+                                        rem = 1 if lines[r].startswith("\t") else min(spaces, 4)
+                                        if rem > 0:
+                                            lines[r] = lines[r][rem:]
+                                            if r == sy: sx = max(0, sx - rem)
+                                            if r == ey: ex = max(0, ex - rem)
+                                            if c.cursor_y == r: c.cursor_x = max(0, c.cursor_x - rem)
+                                    c.sel_start, c.sel_end = (sy, sx), (ey, ex)
+                                else:
+                                    r = c.cursor_y
                                     spaces = len(lines[r]) - len(lines[r].lstrip(' '))
                                     rem = 1 if lines[r].startswith("\t") else min(spaces, 4)
                                     if rem > 0:
                                         lines[r] = lines[r][rem:]
-                                        if r == sy: sx = max(0, sx - rem)
-                                        if r == ey: ex = max(0, ex - rem)
-                                        if c.cursor_y == r: c.cursor_x = max(0, c.cursor_x - rem)
-                                c.sel_start, c.sel_end = (sy, sx), (ey, ex)
-                            else:
-                                r = c.cursor_y
-                                spaces = len(lines[r]) - len(lines[r].lstrip(' '))
-                                rem = 1 if lines[r].startswith("\t") else min(spaces, 4)
-                                if rem > 0:
-                                    lines[r] = lines[r][rem:]
-                                    c.cursor_x = max(0, c.cursor_x - rem)
-                                c.sel_start = c.sel_end = None
-                            c.caption = "\n".join(lines)
-                        elif ch in (10, 13, curses.KEY_ENTER):
-                            if c.v_scroll or c.h_scroll or c.h > 1:
+                                        c.cursor_x = max(0, c.cursor_x - rem)
+                                    c.sel_start = c.sel_end = None
+                                c.caption = "\n".join(lines)
+                            elif ch in (10, 13, curses.KEY_ENTER):
+                                if c.v_scroll or c.h_scroll or c.h > 1:
+                                    delete_selection(c)
+                                    lines = c.caption.split('\n')
+                                    lines.insert(c.cursor_y + 1, lines[c.cursor_y][c.cursor_x:])
+                                    lines[c.cursor_y] = lines[c.cursor_y][:c.cursor_x]
+                                    c.cursor_y += 1
+                                    c.cursor_x = 0
+                                    c.caption = "\n".join(lines)
+                            elif ch in (8, 127, curses.KEY_BACKSPACE):
+                                if not delete_selection(c):
+                                    if c.cursor_x > 0:
+                                        lines[c.cursor_y] = lines[c.cursor_y][:c.cursor_x-1] + lines[c.cursor_y][c.cursor_x:]
+                                        c.cursor_x -= 1
+                                        c.caption = "\n".join(lines)
+                                    elif c.cursor_y > 0:
+                                        prev_len = len(lines[c.cursor_y - 1])
+                                        lines[c.cursor_y - 1] += lines[c.cursor_y]
+                                        lines.pop(c.cursor_y)
+                                        c.cursor_y -= 1
+                                        c.cursor_x = prev_len
+                                        c.caption = "\n".join(lines)
+                            elif 32 <= ch <= 126:
                                 delete_selection(c)
                                 lines = c.caption.split('\n')
-                                lines.insert(c.cursor_y + 1, lines[c.cursor_y][c.cursor_x:])
-                                lines[c.cursor_y] = lines[c.cursor_y][:c.cursor_x]
-                                c.cursor_y += 1
-                                c.cursor_x = 0
+                                lines[c.cursor_y] = lines[c.cursor_y][:c.cursor_x] + chr(ch) + lines[c.cursor_y][c.cursor_x:]
+                                c.cursor_x += 1
                                 c.caption = "\n".join(lines)
-                        elif ch in (8, 127, curses.KEY_BACKSPACE):
-                            if not delete_selection(c):
-                                if c.cursor_x > 0:
-                                    lines[c.cursor_y] = lines[c.cursor_y][:c.cursor_x-1] + lines[c.cursor_y][c.cursor_x:]
-                                    c.cursor_x -= 1
-                                    c.caption = "\n".join(lines)
-                                elif c.cursor_y > 0:
-                                    prev_len = len(lines[c.cursor_y - 1])
-                                    lines[c.cursor_y - 1] += lines[c.cursor_y]
-                                    lines.pop(c.cursor_y)
-                                    c.cursor_y -= 1
-                                    c.cursor_x = prev_len
-                                    c.caption = "\n".join(lines)
-                        elif 32 <= ch <= 126:
-                            delete_selection(c)
-                            lines = c.caption.split('\n')
-                            lines[c.cursor_y] = lines[c.cursor_y][:c.cursor_x] + chr(ch) + lines[c.cursor_y][c.cursor_x:]
-                            c.cursor_x += 1
-                            c.caption = "\n".join(lines)
                             
                         if c.cursor_x > len(lines[c.cursor_y]): c.cursor_x = len(lines[c.cursor_y])
                         vw, vh = max(1, c.w - (1 if c.v_scroll else 0)), max(1, c.h - (1 if c.h_scroll else 0))
