@@ -124,3 +124,7 @@ please fix all this adn give me the full code to rad-tui-ide.py
 --done
 
 please make it so that if we invoke rad-tui-IDE.py -run tsukino.json with no parapeter, it should start a new file called untitled.py and if we start it with a file that does not exist, it created the file before opening it.
+add a new command line option called -dark-mode which shoudl set the whole look to darkmode.
+add the ability for list boxes to have options properties in different backgroudn adn foregrroud colors
+
+do I have the nessesary controls to make a clone of lotus123 in my IDE? if I do please go ahead and make it
