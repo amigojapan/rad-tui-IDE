@@ -9,7 +9,7 @@ import argparse
 import os
 
 # ==========================================================
-# VB1-DOS Clone: Python curses IDE
+# VB1-DOS Clone: Python curses IDE (Dark Mode & Colors Update)
 # ==========================================================
 
 PYTHON_KEYWORDS = {
@@ -81,6 +81,8 @@ class UIControl:
         self.interval = 1000 
         self.last_tick = 0   
         self.bg_color = 12 
+        self.fg_color = -1
+        self.custom_bg = -1
         self.h_scroll = False
         self.v_scroll = False
         self.syntax_hl = False
@@ -112,7 +114,8 @@ class UIControl:
             'caption': self.caption, 'code': self.code, 'value': self.value,
             'items': self.items, 'list_index': self.list_index, 
             'scroll_offset': self.scroll_offset, 'interval': self.interval,
-            'bg_color': self.bg_color, 'h_scroll': self.h_scroll, 'v_scroll': self.v_scroll,
+            'bg_color': self.bg_color, 'fg_color': self.fg_color, 'custom_bg': self.custom_bg,
+            'h_scroll': self.h_scroll, 'v_scroll': self.v_scroll,
             'syntax_hl': self.syntax_hl, 'editable': self.editable,
             'min_val': getattr(self, 'min_val', 0), 'max_val': getattr(self, 'max_val', 100)
         }
@@ -127,6 +130,8 @@ class UIControl:
         c.scroll_offset = data.get('scroll_offset', 0)
         c.interval = data.get('interval', 1000)
         c.bg_color = data.get('bg_color', 12)
+        c.fg_color = data.get('fg_color', -1)
+        c.custom_bg = data.get('custom_bg', -1)
         c.h_scroll = data.get('h_scroll', False)
         c.v_scroll = data.get('v_scroll', False)
         c.syntax_hl = data.get('syntax_hl', False)
@@ -144,6 +149,8 @@ class Window:
         self.pinned_topmost = False
         self.resizable = True
         self.hidden = False
+        self.fg_color = -1
+        self.custom_bg = -1
         self.menus = []
         self.code = ""
 
@@ -152,7 +159,8 @@ class Window:
             'x': self.x, 'y': self.y, 'w': self.w, 'h': self.h,
             'title': self.title, 'name_id': self.name_id,
             'pinned_topmost': self.pinned_topmost, 'resizable': self.resizable,
-            'hidden': self.hidden, 'menus': [m.to_dict() for m in self.menus],
+            'hidden': self.hidden, 'fg_color': self.fg_color, 'custom_bg': self.custom_bg,
+            'menus': [m.to_dict() for m in self.menus],
             'controls': [c.to_dict() for c in self.controls], 'code': self.code
         }
 
@@ -162,6 +170,8 @@ class Window:
         w.pinned_topmost = data.get('pinned_topmost', False)
         w.resizable = data.get('resizable', True)
         w.hidden = data.get('hidden', False)
+        w.fg_color = data.get('fg_color', -1)
+        w.custom_bg = data.get('custom_bg', -1)
         w.menus = [MenuItem.from_dict(m) for m in data.get('menus', [])]
         w.controls = [UIControl.from_dict(c) for c in data.get('controls', [])]
         w.code = data.get('code', '')
@@ -205,6 +215,10 @@ class Window:
         C_BTN_FACE, C_BTN_HL = colors['btn_face'], colors['btn_hl']
         C_TEXTBOX, C_HANDLE = colors['textbox'], colors['handle']
 
+        if self.fg_color >= 0 and self.custom_bg >= 0:
+            form_pair = curses.color_pair(20 + (self.custom_bg % 8) * 8 + (self.fg_color % 8))
+            C_BORDER = C_BG = form_pair
+
         write_at(stdscr, self.x, self.y, "┌" + "─" * (self.w - 2) + "┐", C_BORDER)
         for i in range(1, self.h - 1):
             write_at(stdscr, self.x, self.y + i, "│", C_BORDER)
@@ -231,6 +245,10 @@ class Window:
             if run_mode and c.tool_type == 14: continue 
             draw_x, draw_y = self.x + c.x, self.y + c.y
 
+            c_attr = C_TEXTBOX
+            if getattr(c, 'fg_color', -1) >= 0 and getattr(c, 'custom_bg', -1) >= 0:
+                c_attr = curses.color_pair(20 + (c.custom_bg % 8) * 8 + (c.fg_color % 8))
+
             if c.tool_type == 3: 
                 is_pressed = (i == pressed_ctrl)
                 TOP_C = C_BTN_FACE if is_pressed else C_BTN_HL
@@ -254,7 +272,7 @@ class Window:
                 write_clipped(draw_x, draw_y + actual_h - 1, "└", TOP_C)
                 write_clipped(draw_x + 1, draw_y + actual_h - 1, "─" * (c.w - 2) + "┘", BOT_C)
 
-            elif c.tool_type == 15: # VScrollBar
+            elif c.tool_type == 15: 
                 vh = max(3, c.h)
                 write_clipped(draw_x, draw_y, "▲", C_BORDER)
                 write_clipped(draw_x, draw_y + vh - 1, "▼", C_BORDER)
@@ -265,9 +283,9 @@ class Window:
                 pos = int(((val - getattr(c, 'min_val', 0)) / v_range) * (track_h - 1))
                 for r in range(1, vh - 1):
                     char = "█" if r - 1 == pos else "▒"
-                    write_clipped(draw_x, draw_y + r, char, C_TEXTBOX)
+                    write_clipped(draw_x, draw_y + r, char, c_attr)
 
-            elif c.tool_type == 8: # HScrollBar
+            elif c.tool_type == 8: 
                 vw = max(3, c.w)
                 write_clipped(draw_x, draw_y, "◄", C_BORDER)
                 write_clipped(draw_x + vw - 1, draw_y, "►", C_BORDER)
@@ -278,7 +296,7 @@ class Window:
                 pos = int(((val - getattr(c, 'min_val', 0)) / v_range) * (track_w - 1))
                 for col in range(1, vw - 1):
                     char = "█" if col - 1 == pos else "▒"
-                    write_clipped(draw_x + col, draw_y, char, C_TEXTBOX)
+                    write_clipped(draw_x + col, draw_y, char, c_attr)
 
             elif c.tool_type == 13: 
                 vw = max(1, c.w - (1 if c.v_scroll else 0))
@@ -289,12 +307,12 @@ class Window:
                     actual_y = c.scroll_y + r
                     if actual_y < len(lines):
                         line_text = lines[actual_y]
-                        char_attrs = [C_TEXTBOX] * len(line_text)
+                        char_attrs = [c_attr] * len(line_text)
                         if getattr(c, 'syntax_hl', False):
                             tokens = tokenize_python(line_text)
                             idx = 0
                             for text_chunk, ttype in tokens:
-                                attr = C_TEXTBOX
+                                attr = c_attr
                                 if ttype == 'keyword': attr = colors['kw']
                                 elif ttype == 'string': attr = colors['str']
                                 elif ttype == 'number': attr = colors['num']
@@ -318,13 +336,13 @@ class Window:
                         if len(visible_line) < vw:
                             pad_len = vw - len(visible_line)
                             for padding_idx in range(pad_len):
-                                attr = C_TEXTBOX
+                                attr = c_attr
                                 actual_x = c.scroll_x + len(visible_line) + padding_idx
                                 if is_selected(actual_y, actual_x, c.sel_start, c.sel_end):
                                     attr = attr | curses.A_REVERSE
                                 write_clipped(curr_x + padding_idx, draw_y + r, " ", attr)
                     else:
-                        write_clipped(draw_x, draw_y + r, " " * vw, C_TEXTBOX)
+                        write_clipped(draw_x, draw_y + r, " " * vw, c_attr)
                     
                 if c.v_scroll:
                     for r in range(vh):
@@ -358,13 +376,13 @@ class Window:
                     if c.items and 0 <= idx < len(c.items):
                         disp_text = c.items[idx]
                         text = (disp_text + " " * c.w)[:c.w]
-                        attr = C_HANDLE if idx == c.list_index else C_TEXTBOX
+                        attr = C_HANDLE if idx == c.list_index else c_attr
                         write_clipped(draw_x, draw_y + r, text, attr)
                     else:
-                        write_clipped(draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
+                        write_clipped(draw_x, draw_y + r, " " * c.w, c_attr)
 
             elif c.tool_type == 14: 
-                write_clipped(draw_x, draw_y, ("[⏱] " + c.name_id)[:c.w], C_TEXTBOX)
+                write_clipped(draw_x, draw_y, ("[⏱] " + c.name_id)[:c.w], c_attr)
 
             elif c.tool_type == 7: 
                 write_clipped(draw_x, draw_y, "┌" + "─" * (c.w - 2) + "┐", C_BORDER)
@@ -396,8 +414,8 @@ class Window:
                 for r in range(c.h):
                     if r == 0:
                         text = (c.caption + " " * c.w)[:c.w]
-                        write_clipped(draw_x, draw_y + r, text, C_TEXTBOX)
-                    else: write_clipped(draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
+                        write_clipped(draw_x, draw_y + r, text, c_attr)
+                    else: write_clipped(draw_x, draw_y + r, " " * c.w, c_attr)
 
         if not run_mode and active_ctrl >= 0 and active_ctrl < len(self.controls):
             c = self.controls[active_ctrl]
@@ -501,9 +519,14 @@ def draw_properties(stdscr, prop_win, selected_win, selected_ctrl_idx, editing_p
             write_at(stdscr, prop_win.x + 2, prop_win.y + 11, "Val: ", C_LABEL)
             mark = "X" if c.value else " "
             write_at(stdscr, prop_win.x + 8, prop_win.y + 11, f"[{mark}]       ", C_TB)
-        if c.tool_type in (2, 10):
+        if c.tool_type == 2:
             draw_prop(11,"Items:", 8, ",".join(c.items))
             draw_prop(12,"Idx: ", 9, str(c.list_index))
+        if c.tool_type == 10:
+            draw_prop(11,"Items:", 8, ",".join(c.items))
+            draw_prop(12,"Idx: ", 9, str(c.list_index))
+            draw_prop(13,"FGColor:", 12, str(getattr(c, 'fg_color', -1)))
+            draw_prop(14,"BGColor:", 13, str(getattr(c, 'custom_bg', -1)))
         if c.tool_type == 14: draw_prop(11,"Intrv:", 7, str(c.interval))
         if c.tool_type in (8, 15):
             draw_prop(11,"Value:", 7, getattr(c, 'value', 0))
@@ -514,6 +537,8 @@ def draw_properties(stdscr, prop_win, selected_win, selected_ctrl_idx, editing_p
             draw_prop(12,"VScroll:", 8, "[X]" if getattr(c, 'v_scroll', False) else "[ ]")
             draw_prop(13,"SyntaxHL:", 10, "[X]" if getattr(c, 'syntax_hl', False) else "[ ]")
             draw_prop(14,"Editable:", 11, "[X]" if getattr(c, 'editable', True) else "[ ]")
+            draw_prop(15,"FGColor:", 12, str(getattr(c, 'fg_color', -1)))
+            draw_prop(16,"BGColor:", 13, str(getattr(c, 'custom_bg', -1)))
         if c.tool_type == 3: 
             write_at(stdscr, prop_win.x + 2, prop_win.y + 11, "Color:", C_LABEL)
             palette = [12, 13, 14, 15, 16, 17] 
@@ -532,6 +557,8 @@ def draw_properties(stdscr, prop_win, selected_win, selected_ctrl_idx, editing_p
         draw_prop(11,"Pinned:", 7, "[X]" if w.pinned_topmost else "[ ]")
         draw_prop(12,"Resiz:", 8, "[X]" if w.resizable else "[ ]")
         draw_prop(13,"Hidden:", 9, "[X]" if w.hidden else "[ ]")
+        draw_prop(14,"FGColor:", 10, str(getattr(w, 'fg_color', -1)))
+        draw_prop(15,"BGColor:", 11, str(getattr(w, 'custom_bg', -1)))
     else:
         write_at(stdscr, prop_win.x + 2, prop_win.y + 2, "No selection.", C_LABEL)
 
@@ -806,7 +833,6 @@ def insert_text_at_cursor(c, text):
     c.caption = "\n".join(lines)
 
 def main(stdscr):
-    curses.raw()
     setattr(sys, '_ide_dir', os.getcwd())
     
     curses.curs_set(0)
@@ -815,6 +841,7 @@ def main(stdscr):
     curses.mouseinterval(0) 
     print('\033[?1003h', end='', flush=True) 
 
+    # Base legacy palette (1-17)
     for i, (fg, bg) in enumerate([
         (curses.COLOR_WHITE, curses.COLOR_BLUE), (curses.COLOR_BLACK, curses.COLOR_WHITE),
         (curses.COLOR_WHITE, curses.COLOR_WHITE), (curses.COLOR_BLACK, curses.COLOR_CYAN),
@@ -826,15 +853,45 @@ def main(stdscr):
         (curses.COLOR_WHITE, curses.COLOR_RED), (curses.COLOR_BLACK, curses.COLOR_CYAN),
         (curses.COLOR_WHITE, curses.COLOR_MAGENTA)
     ], 1): curses.init_pair(i, fg, bg)
+    
+    # Generate strict standard combinations mapping for all 8x8 generic properties combinations (id: 20-83)
+    # pair_id = 20 + bg_color * 8 + fg_color
+    for bg in range(8):
+        for fg in range(8):
+            curses.init_pair(20 + bg * 8 + fg, fg, bg)
 
-    C = {
-        'border': curses.color_pair(1) | curses.A_BOLD, 'bg': curses.color_pair(2),
-        'btn_face': curses.color_pair(2), 'btn_hl': curses.color_pair(3) | curses.A_BOLD,
-        'textbox': curses.color_pair(4), 'handle': curses.color_pair(5),
-        'active_tool': curses.color_pair(6) | curses.A_BOLD, 'prop_label': curses.color_pair(7),
-        'kw': curses.color_pair(8) | curses.A_BOLD, 'str': curses.color_pair(9),
-        'comment': curses.color_pair(10), 'num': curses.color_pair(11)
-    }
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-run", help="Path to JSON")
+    parser.add_argument("-dark-mode", action="store_true", help="Enable dark mode interface")
+    parser.add_argument("design_file", nargs="?", help="Path to JSON to load in design mode")
+    args, _ = parser.parse_known_args()
+    
+    sys._is_standalone_run = bool(args.run)
+
+    if args.dark_mode:
+        C = {
+            'border': curses.color_pair(20 + 0*8 + 7) | curses.A_BOLD,
+            'bg': curses.color_pair(20 + 0*8 + 7),
+            'btn_face': curses.color_pair(20 + 0*8 + 7),
+            'btn_hl': curses.color_pair(20 + 7*8 + 0) | curses.A_BOLD,
+            'textbox': curses.color_pair(20 + 0*8 + 7),
+            'handle': curses.color_pair(20 + 4*8 + 7),
+            'active_tool': curses.color_pair(20 + 7*8 + 0) | curses.A_BOLD,
+            'prop_label': curses.color_pair(20 + 0*8 + 7),
+            'kw': curses.color_pair(20 + 0*8 + 6) | curses.A_BOLD,
+            'str': curses.color_pair(20 + 0*8 + 2),
+            'comment': curses.color_pair(20 + 0*8 + 4),
+            'num': curses.color_pair(20 + 0*8 + 5)
+        }
+    else:
+        C = {
+            'border': curses.color_pair(1) | curses.A_BOLD, 'bg': curses.color_pair(2),
+            'btn_face': curses.color_pair(2), 'btn_hl': curses.color_pair(3) | curses.A_BOLD,
+            'textbox': curses.color_pair(4), 'handle': curses.color_pair(5),
+            'active_tool': curses.color_pair(6) | curses.A_BOLD, 'prop_label': curses.color_pair(7),
+            'kw': curses.color_pair(8) | curses.A_BOLD, 'str': curses.color_pair(9),
+            'comment': curses.color_pair(10), 'num': curses.color_pair(11)
+        }
 
     tools = Toolbox(0, 1)
     main_form = Window(17, 1, 41, 18, "Form 1", "Form1")
@@ -862,13 +919,6 @@ def main(stdscr):
     run_drag_sys_vscroll = run_drag_sys_hscroll = -1
     design_backup = queued_form_to_load = None
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-run", help="Path to JSON")
-    parser.add_argument("design_file", nargs="?", help="Path to JSON to load in design mode")
-    args, _ = parser.parse_known_args()
-    
-    sys._is_standalone_run = bool(args.run)
-
     def trigger_load_form(fname): nonlocal queued_form_to_load; queued_form_to_load = fname
     def trigger_resize(win):
         if run_mode and "on_form_resize" in run_globals:
@@ -878,12 +928,6 @@ def main(stdscr):
     def init_run_mode(target_form, run_globals_dict):
         run_globals_dict.clear()
         run_globals_dict['__msg__'] = None
-        
-        class MouseState:
-            def __init__(self):
-                self.x = 0
-                self.y = 0
-        run_globals_dict['mouse'] = MouseState()
         
         def _msgbox(text): run_globals_dict['__msg__'] = str(text)
         def _ide_end():
@@ -994,6 +1038,8 @@ def main(stdscr):
                     elif editing_prop == 9: c.list_index = int(edit_buffer) if edit_buffer.lstrip('-').isdigit() else 0
                     elif editing_prop == 10: c.min_val = int(edit_buffer) if edit_buffer.lstrip('-').isdigit() else 0
                     elif editing_prop == 11: c.max_val = int(edit_buffer) if edit_buffer.lstrip('-').isdigit() else 100
+                    elif editing_prop == 12: c.fg_color = int(edit_buffer) if edit_buffer.lstrip('-').isdigit() else -1
+                    elif editing_prop == 13: c.custom_bg = int(edit_buffer) if edit_buffer.lstrip('-').isdigit() else -1
                 except ValueError: pass 
                 
                 if c.tool_type == 15: c.w = 1; c.h = max(3, c.h)
@@ -1009,6 +1055,8 @@ def main(stdscr):
                     elif editing_prop == 4: w.y = int(edit_buffer)
                     elif editing_prop == 5: w.w = int(edit_buffer)
                     elif editing_prop == 6: w.h = int(edit_buffer)
+                    elif editing_prop == 10: w.fg_color = int(edit_buffer) if edit_buffer.lstrip('-').isdigit() else -1
+                    elif editing_prop == 11: w.custom_bg = int(edit_buffer) if edit_buffer.lstrip('-').isdigit() else -1
                 except ValueError: pass
                 w.w, w.h = max(10, w.w), max(5, w.h)
                 w.x, w.y = max(0, min(w.x, curses.COLS - w.w)), max(1, min(w.y, curses.LINES - w.h))
@@ -1084,6 +1132,7 @@ def main(stdscr):
                         try:
                             with open(filepath, 'w', encoding='utf-8') as f: json.dump(main_form.to_dict(), f, indent=2)
                             CURRENT_PROJECT_FILE = filepath
+                            show_sync_msgbox(stdscr, f"Project saved to {filepath}", C)
                         except Exception as e: show_sync_msgbox(stdscr, f"Save Error:\n{e}", C)
                     elif mode == 'load':
                         if not filepath.endswith('.json'): filepath += '.json'
@@ -1095,6 +1144,7 @@ def main(stdscr):
                             selected_win, selected_ctrl_idx = main_form, -1
                             design_backup = main_form
                             CURRENT_PROJECT_FILE = filepath
+                            show_sync_msgbox(stdscr, f"Project loaded from {filepath}", C)
                         except Exception as e: show_sync_msgbox(stdscr, f"Load Error:\n{e}", C)
             
             if queued_form_to_load:
@@ -1142,6 +1192,7 @@ def main(stdscr):
                 menu_positions.append((menu_x, menu_x + len(lbl), m))
                 menu_x += len(lbl)
                 
+            # Render [STOP] button UNLESS explicitly launched natively as a standalone app via -run
             if not getattr(sys, '_is_standalone_run', False):
                 stop_lbl = " [STOP] "
                 menu_x += 2
@@ -1164,11 +1215,12 @@ def main(stdscr):
                     if sidx >= 0:
                         t = swin.controls[sidx].tool_type
                         if t in (1, 11, 14, 3): return 13
-                        if t in (2, 10): return 14
+                        if t == 10: return 16
+                        if t == 2: return 14
                         if t in (8, 15): return 15
-                        if t == 13: return 16
+                        if t == 13: return 18
                         return 12
-                    return 15
+                    return 17
                 win.h = get_prop_h(selected_win, selected_ctrl_idx)
                 win.draw(stdscr, C, act_idx, press_idx, run_mode)
                 draw_properties(stdscr, win, selected_win, selected_ctrl_idx, editing_prop, edit_buffer, C, tools)
@@ -1200,11 +1252,6 @@ def main(stdscr):
         if ch == curses.KEY_MOUSE:
             try:
                 _, mx, my, _, bstate = curses.getmouse()
-                
-                if run_mode and 'mouse' in run_globals:
-                    run_globals['mouse'].x = mx
-                    run_globals['mouse'].y = my
-                
                 mouse_moved = (mx != old_mx or my != old_my)
                 left_click = bool(bstate & curses.BUTTON1_PRESSED) or bool(bstate & curses.BUTTON1_CLICKED)
                 right_click = bool(bstate & curses.BUTTON3_PRESSED) or bool(bstate & curses.BUTTON3_CLICKED)
@@ -1353,11 +1400,6 @@ def main(stdscr):
                                                         c.cursor_x = min(len(lines[c.cursor_y]), c.scroll_x + click_x)
                                                         c.sel_start, c.sel_end = (c.cursor_y, c.cursor_x), (c.cursor_y, c.cursor_x)
                                                         run_drag_select_text = idx
-                                                        
-                                                        fn_start = f"on_selection_start_{c.name_id}"
-                                                        if fn_start in run_globals:
-                                                            try: run_globals[fn_start]()
-                                                            except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
                                                 elif c.tool_type == 15:
                                                     trigger_click = True
                                                     if ly - c.y == 0:
@@ -1443,6 +1485,7 @@ def main(stdscr):
                                     if CURRENT_PROJECT_FILE:
                                         try:
                                             with open(CURRENT_PROJECT_FILE, 'w', encoding='utf-8') as f: json.dump(main_form.to_dict(), f, indent=2)
+                                            show_sync_msgbox(stdscr, f"Project saved to {CURRENT_PROJECT_FILE}", C)
                                         except Exception as e: show_sync_msgbox(stdscr, f"Save Error:\n{e}", C)
                                     else:
                                         choice = 'save_as' 
@@ -1534,10 +1577,20 @@ def main(stdscr):
                                                         else: clicked_prop_row = False
                                                     elif prop_local_y == 13:
                                                         if c.tool_type == 13: c.syntax_hl, clicked_prop_row = not c.syntax_hl, False
+                                                        elif c.tool_type == 10: editing_prop, edit_buffer = 12, str(getattr(c, 'fg_color', -1))
                                                         elif c.tool_type in (8, 15): editing_prop, edit_buffer = 11, str(getattr(c, 'max_val', 100))
                                                         else: clicked_prop_row = False
                                                     elif prop_local_y == 14:
                                                         if c.tool_type == 13: c.editable, clicked_prop_row = not c.editable, False
+                                                        elif c.tool_type == 10: editing_prop, edit_buffer = 13, str(getattr(c, 'custom_bg', -1))
+                                                        elif selected_ctrl_idx == -1: editing_prop, edit_buffer = 10, str(getattr(w, 'fg_color', -1))
+                                                        else: clicked_prop_row = False
+                                                    elif prop_local_y == 15:
+                                                        if c.tool_type == 13: editing_prop, edit_buffer = 12, str(getattr(c, 'fg_color', -1))
+                                                        elif selected_ctrl_idx == -1: editing_prop, edit_buffer = 11, str(getattr(w, 'custom_bg', -1))
+                                                        else: clicked_prop_row = False
+                                                    elif prop_local_y == 16:
+                                                        if c.tool_type == 13: editing_prop, edit_buffer = 13, str(getattr(c, 'custom_bg', -1))
                                                         else: clicked_prop_row = False
                                                     else: clicked_prop_row = False
                                                 elif selected_win is not None:
@@ -1551,6 +1604,8 @@ def main(stdscr):
                                                     elif prop_local_y == 11: w.pinned_topmost, clicked_prop_row = not w.pinned_topmost, False
                                                     elif prop_local_y == 12: w.resizable, clicked_prop_row = not w.resizable, False
                                                     elif prop_local_y == 13: w.hidden, clicked_prop_row = not w.hidden, False
+                                                    elif prop_local_y == 14: editing_prop, edit_buffer = 10, str(getattr(w, 'fg_color', -1))
+                                                    elif prop_local_y == 15: editing_prop, edit_buffer = 11, str(getattr(w, 'custom_bg', -1))
                                                     else: clicked_prop_row = False
                                             else:
                                                 dragged_win, drag_offset_x, drag_offset_y = win, local_x, local_y
@@ -1577,9 +1632,8 @@ def main(stdscr):
                                                         if is_double_click and c.tool_type in (1, 2, 3, 7, 8, 10, 11, 13, 14, 15): 
                                                             if not c.code:
                                                                 if c.tool_type == 14: c.code = f"def on_tick_{c.name_id}():\n    pass\n"
-                                                                elif c.tool_type == 13: c.code = f"def on_change_{c.name_id}():\n    pass\n\ndef on_right_click_{c.name_id}():\n    pass\n\ndef on_selection_start_{c.name_id}():\n    pass\n\ndef on_selection_end_{c.name_id}():\n    pass\n"
                                                                 elif c.tool_type == 3: c.code = f"def button_down_{c.name_id}():\n    pass\n\ndef on_button_up_{c.name_id}():\n    pass\n\ndef on_click_{c.name_id}():\n    pass\n\ndef on_right_click_{c.name_id}():\n    pass\n"
-                                                                elif c.tool_type in (8, 15): c.code = f"def on_change_{c.name_id}():\n    pass\n\ndef on_right_click_{c.name_id}():\n    pass\n"
+                                                                elif c.tool_type in (8, 13, 15): c.code = f"def on_change_{c.name_id}():\n    pass\n\ndef on_right_click_{c.name_id}():\n    pass\n"
                                                                 else: c.code = f"def on_click_{c.name_id}():\n    pass\n\ndef on_right_click_{c.name_id}():\n    pass\n"
                                                                 
                                                             ed_form, bak, tgt = launch_editor_json_for_code(c, main_form, windows, run_globals)
@@ -1625,14 +1679,6 @@ def main(stdscr):
                                 if fn in run_globals:
                                     try: run_globals[fn]()
                                     except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
-                                    
-                    if run_mode and run_drag_select_text >= 0:
-                        c = main_form.controls[run_drag_select_text]
-                        if c.sel_start and c.sel_end and c.sel_start != c.sel_end:
-                            fn_end = f"on_selection_end_{c.name_id}"
-                            if fn_end in run_globals:
-                                try: run_globals[fn_end]()
-                                except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
 
                     if resizing_win is not None and resizing_win is main_form and run_mode: trigger_resize(main_form)
                     mouse_down = dragged_tool = resizing_ctrl = False
@@ -1752,33 +1798,6 @@ def main(stdscr):
                             elif c.cursor_y < len(lines) - 1:
                                 c.cursor_y += 1
                                 c.cursor_x = 0
-                        elif ch == 1: # Ctrl+A
-                            c.sel_start = (0, 0)
-                            c.sel_end = (max(0, len(lines)-1), len(lines[-1]))
-                            c.cursor_y, c.cursor_x = c.sel_end
-                        elif ch == 3: # Ctrl+C
-                            if c.sel_start and c.sel_end:
-                                sy, sx = c.sel_start
-                                ey, ex = c.sel_end
-                                if (sy, sx) > (ey, ex): sy, sx, ey, ex = ey, ex, sy, sx
-                                if not lines: lines = [""]
-                                sy, ey = min(max(sy, 0), len(lines)-1), min(max(ey, 0), len(lines)-1)
-                                sx, ex = min(max(sx, 0), len(lines[sy])), min(max(ex, 0), len(lines[ey]))
-                                sel_lines = []
-                                for r in range(sy, ey + 1):
-                                    if r == sy and r == ey: sel_lines.append(lines[r][sx:ex])
-                                    elif r == sy: sel_lines.append(lines[r][sx:])
-                                    elif r == ey: sel_lines.append(lines[r][:ex])
-                                    else: sel_lines.append(lines[r])
-                                IDE_CLIPBOARD = "\n".join(sel_lines)
-                        elif ch == 22: # Ctrl+V
-                            if getattr(c, 'editable', True):
-                                old_cap = c.caption
-                                insert_text_at_cursor(c, IDE_CLIPBOARD)
-                                lines = c.caption.split('\n')
-                                if c.caption != old_cap and f"on_change_{c.name_id}" in run_globals:
-                                    try: run_globals[f"on_change_{c.name_id}"]()
-                                    except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
                         elif ch in (getattr(curses, 'KEY_SLEFT', 393), 393):
                             if c.sel_start is None: c.sel_start = (c.cursor_y, c.cursor_x)
                             if c.cursor_x > 0: c.cursor_x -= 1
