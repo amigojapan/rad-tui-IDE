@@ -8,6 +8,10 @@ A Visual Basic 1.0 for MS-DOS inspired visual IDE that runs on Linux. Design for
 ![Platform](https://img.shields.io/badge/platform-Linux-green.svg)
 ![Language](https://img.shields.io/badge/language-Python%20%7C%20FreeBASIC-orange.svg)
 
+
+![screenshot](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/latestRAD-TUI-IDEscreenshot.png)
+
+
 ## 🎯 Concept
 
 RAD-TUI-IDE recreates the magic of early 90s visual programming environments like VB1 for MS-DOS, but for modern Linux terminals. It provides:
