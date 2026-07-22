@@ -11,6 +11,15 @@ A Visual Basic 1.0 for MS-DOS inspired visual IDE that runs on Linux. Design for
 
 ![screenshot](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/latestRAD-TUI-IDEscreenshot.png)
 
+## Example projects:
+![tsukinoeditor](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/tsukinoeditor.png)
+
+![minesweeper](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/minesweeper.png)
+
+![tictactoe](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/tictactoe.png)
+
+![calc](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/calc.png)
+
 
 ## 🎯 Concept
 
