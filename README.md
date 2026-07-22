@@ -9,7 +9,7 @@ A Visual Basic 1.0 for MS-DOS inspired visual IDE that runs on Linux. Design for
 ![Language](https://img.shields.io/badge/language-Python%20%7C%20FreeBASIC-orange.svg)
 
 
-![screenshot](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/latestRAD-TUI-IDEscreenshot.png))
+![screenshot](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/latestRAD-TUI-IDEscreenshot.png)
 
 
 ## 🎯 Concept
