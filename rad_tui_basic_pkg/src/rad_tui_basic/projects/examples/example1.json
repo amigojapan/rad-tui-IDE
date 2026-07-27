@@ -1,0 +1,39 @@
+{
+  "x": 16,
+  "y": 2,
+  "w": 36,
+  "h": 17,
+  "title": "Form 1",
+  "controls": [
+    {
+      "x": 11,
+      "y": 11,
+      "w": 12,
+      "h": 3,
+      "tool_type": 3,
+      "name_id": "btnOK",
+      "caption": "OK",
+      "code": "def on_click_btnOK():\n    msgbox(\"OK button clicked!\")\n    txtOutput.caption=\"Welcome \"+txtName.caption+\"!\"\n"
+    },
+    {
+      "x": 2,
+      "y": 14,
+      "w": 31,
+      "h": 1,
+      "tool_type": 13,
+      "name_id": "txtOutput",
+      "caption": "Please click ok!",
+      "code": ""
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "w": 31,
+      "h": 1,
+      "tool_type": 13,
+      "name_id": "txtName",
+      "caption": "Enter your name here!",
+      "code": ""
+    }
+  ]
+}

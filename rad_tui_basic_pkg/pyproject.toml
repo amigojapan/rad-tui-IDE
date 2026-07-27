@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsukino"
+version = "0.1.0"
+description = "Tsukino TUI editor"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+  "rad-tui-ide>=0.1.14"
+]
+
+[project.scripts]
+tsukino = "tsukino.tsukino:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsukino"]
