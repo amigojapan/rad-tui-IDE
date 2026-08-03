@@ -21,6 +21,77 @@ A Visual Basic 1.0 for MS-DOS inspired visual IDE that runs on Linux. Design for
 ![calc](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/calc.png)
 
 
+## Installation & Usage Guide
+
+### Linux (Debian / Ubuntu / Linux Mint)
+
+**1. Install Python and venv**
+Ensure your system repositories are up to date and install Python 3 along with the `venv` module:
+```bash
+sudo apt update
+sudo apt install python3 python3-venv python3-pip
+```
+
+**2. Setup and Run**
+Create a virtual environment in your home directory, activate it, and launch the application:
+```bash
+cd ~
+python3 -m venv rad-tui-ide
+source rad-tui-ide/bin/activate
+pip install rad-tui-ide
+rad-tui-ide
+```
+*(Note: For Arch, Fedora, or other distributions, use your respective package manager like `pacman` or `dnf` to install Python 3.)*
+
+
+### macOS
+
+**1. Install Homebrew**
+Run the following command in your terminal to install Homebrew (if you haven't already):
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+**2. Install Python**
+Update Homebrew and install Python 3:
+```bash
+brew update
+brew install python3
+```
+
+**3. Setup and Run**
+Create a virtual environment, install the package, and run the IDE:
+```bash
+cd ~
+python3 -m venv rad-tui-ide
+source rad-tui-ide/bin/activate
+pip install rad-tui-ide
+rad-tui-ide
+```
+
+
+### Windows
+
+**1. Install Python**
+Download and install Python 3 from the [official Python website](https://www.python.org/downloads/) or via the Microsoft Store. **Make sure to check the box that says "Add Python to PATH"** during installation.
+
+**2. Setup and Run**
+Open PowerShell or Command Prompt and run the following commands:
+```powershell
+cd %USERPROFILE%
+python -m venv rad-tui-ide
+
+# Activate the virtual environment
+# On PowerShell:
+.\rad-tui-ide\Scripts\Activate.ps1
+# Or on Command Prompt:
+# .\rad-tui-ide\Scripts\activate.bat
+
+# Install and run
+pip install rad-tui-ide
+rad-tui-ide
+
+
 ## 🎯 Concept
 
 RAD-TUI-IDE recreates the magic of early 90s visual programming environments like VB1 for MS-DOS, but for modern Linux terminals. It provides:
@@ -53,11 +124,14 @@ RAD-TUI-IDE recreates the magic of early 90s visual programming environments lik
 
 ## 🎮 How to Run
 
-### Python Version (Recommended)
-```bash
-chmod +x rad-tui-py.py
-./rad-tui-py.py
-```
+pip install rad-tui-ide
+
+rad-tui-ide
+
+rad-tui-ide -dark-mode
+
+rad-tui-ide -run scriptname.json
+
 
 ## 🕹️ User Guide
 
@@ -137,7 +211,3 @@ Inspired by:
 - Microsoft Visual Basic 1.0 for MS-DOS (1992)
 - The simplicity of early visual programming environments
 - The enduring appeal of terminal-based applications
-
----
-
-**Happy retro-coding!** 🎉
