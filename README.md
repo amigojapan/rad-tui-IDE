@@ -90,6 +90,7 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 # Install and run
 pip install rad-tui-ide
+pip install windows-curses
 rad-tui-ide
 
 
