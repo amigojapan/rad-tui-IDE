@@ -78,7 +78,7 @@ Download and install Python 3 from the [official Python website](https://www.pyt
 **2. Setup and Run**
 Open PowerShell or Command Prompt and run the following commands:
 ```powershell
-cd %USERPROFILE%
+cd $env:USERPROFILE
 python -m venv rad-tui-ide
 
 # Activate the virtual environment
