@@ -9,7 +9,7 @@ A Visual Basic 1.0 for MS-DOS inspired visual IDE that runs on Linux terminal or
 ![Language](https://img.shields.io/badge/language-Python%20%7C%20FreeBASIC-orange.svg)
 
 
-[![Watch the video|300](https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_play_button_icon_%282013%E2%80%932017%29.svg)](https://www.youtube.com/watch?v=cOUGTNE0Kso)
+<a href=https://www.youtube.com/watch?v=cOUGTNE0Kso><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_play_button_icon_%282013%E2%80%932017%29.svg" alt="Watch the video|300" width="100"></a>
 
 
 ![screenshot](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/latestRAD-TUI-IDEscreenshot.png)
