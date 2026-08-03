@@ -53,11 +53,14 @@ RAD-TUI-IDE recreates the magic of early 90s visual programming environments lik
 
 ## 🎮 How to Run
 
-### Python Version (Recommended)
-```bash
-chmod +x rad-tui-py.py
-./rad-tui-py.py
-```
+pip install rad-tui-ide
+
+rad-tui-ide
+
+rad-tui-ide -dark-mode
+
+rad-tui-ide -run scriptname.json
+
 
 ## 🕹️ User Guide
 
@@ -137,7 +140,3 @@ Inspired by:
 - Microsoft Visual Basic 1.0 for MS-DOS (1992)
 - The simplicity of early visual programming environments
 - The enduring appeal of terminal-based applications
-
----
-
-**Happy retro-coding!** 🎉

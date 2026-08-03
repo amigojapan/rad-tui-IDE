@@ -3,17 +3,36 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "tsukino"
-version = "0.1.0"
-description = "Tsukino TUI editor"
+name = "rad-tui-ide"
+version = "0.1.15"
+description = "A TUI designer for python"
 readme = "README.md"
 requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+  {name = "Usmar Padow", email = "usmar.in.japan@gmail.com"}
+]
 dependencies = [
-  "rad-tui-ide>=0.1.14"
+  # Add your project's pip dependencies here
 ]
 
+# 2. Section headers must come AFTER all direct key-value pairs:
 [project.scripts]
-tsukino = "tsukino.tsukino:main"
+rad-tui-ide = "rad_tui_basic.rad_tui_py:cli_entry"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/tsukino"]
+packages = ["src/rad_tui_basic"]
+artifacts = [
+  "src/*.json",
+  "src/rad_tui_basic/**/*.json",
+  "src/rad_tui_basic/projects/**/*",
+  "src/rad_tui_basic/examples/**/*"
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/README.md",
+  "/LICENSE",
+  "/HISTORY.md"
+]
