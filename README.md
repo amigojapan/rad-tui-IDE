@@ -83,6 +83,7 @@ python -m venv rad-tui-ide
 
 # Activate the virtual environment
 # On PowerShell:
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 .\rad-tui-ide\Scripts\Activate.ps1
 # Or on Command Prompt:
 # .\rad-tui-ide\Scripts\activate.bat
