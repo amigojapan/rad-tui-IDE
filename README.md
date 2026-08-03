@@ -2,7 +2,7 @@
 
 **Rapid Application Development - Terminal User Interface IDE**
 
-A Visual Basic 1.0 for MS-DOS inspired visual IDE that runs on Linux. Design forms, place controls, write code, and run your applications - all in the terminal!
+A Visual Basic 1.0 for MS-DOS inspired visual IDE that runs on Linux terminal or windows powershell or macos terminal. Design forms, place controls, write code, and run your applications - all in the terminal!
 
 ![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux-green.svg)
