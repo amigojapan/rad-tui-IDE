@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 import curses
 import time
 import re
@@ -8,228 +7,11 @@ import json
 import sys
 import argparse
 import os
-import unicodedata
+from pathlib import Path
 
 # ==========================================================
-# VB1-DOS Clone: Python curses IDE (Internationalization)
+# VB1-DOS Clone: Python curses IDE (Dark Mode & Colors Update)
 # ==========================================================
-
-LANG = 'en'
-
-I18N = {
-    'en': {
-        'toolbox_title': '-Tools-',
-        'tools': ["Move/Size", "Check Box", "Combo Box", "Command Btn", "Frame", "HScrollBar", "Label", "List Box", "Option Btn", "Text Box", "Timer", "VScrollBar"],
-        'prop_title': 'Properties',
-        'prop_no_sel': 'No selection.',
-        'prop_type': 'Type: {}',
-        'prop_form': 'Form',
-        'prop_name': 'Name:',
-        'prop_cap': 'Cap: ',
-        'prop_x': 'X:   ',
-        'prop_y': 'Y:   ',
-        'prop_w': 'W:   ',
-        'prop_h': 'H:   ',
-        'prop_val': 'Val: ',
-        'prop_items': 'Items:',
-        'prop_idx': 'Idx: ',
-        'prop_intrv': 'Intrv:',
-        'prop_value': 'Value:',
-        'prop_min': 'Min:  ',
-        'prop_max': 'Max:  ',
-        'prop_hscroll': 'HScroll:',
-        'prop_vscroll': 'VScroll:',
-        'prop_syntaxhl': 'SyntaxHL:',
-        'prop_edit': 'Editable:',
-        'prop_color': 'Color:',
-        'prop_pinned': 'Pinned:',
-        'prop_resiz': 'Resiz:',
-        'prop_hidden': 'Hidden:',
-        'prop_fg': 'FGColor:',
-        'prop_bg': 'BGColor:',
-        'menu_top': ' File  Edit  [RUN ] Menu Editor ',
-        'menu_top_run': ' [STOP] ',
-        'menu_file': [" Save Project       ", " Save Project As... ", " Load Project...    ", " Exit IDE           "],
-        'menu_edit': [" Delete Selected Control "],
-        'msg_saved': 'Project saved to {}',
-        'msg_loaded': 'Project loaded from {}',
-        'msg_save_err': 'Save Error:\n{}',
-        'msg_load_err': 'Load Error:\n{}',
-        'msg_sel_file': 'Please select a file.',
-        'me_title': 'Menu Editor',
-        'me_sel': 'Selected Menu',
-        'me_add_top': 'Add Top Menu',
-        'me_add_sub': 'Add Sub Menu',
-        'me_del_sel': 'Delete Selected',
-        'me_del_menu': 'Delete Menu',
-        'me_edit_code': 'Edit Code',
-        'me_close': 'Close Editor',
-        'me_ok': 'OK',
-        'me_lbl_sel': 'Selected Menu:',
-        'me_p_top': 'Top Menu Label:',
-        'me_p_func': 'Func (e.g. mnu_file):',
-        'me_p_sub': 'Sub-Menu Label:',
-        'me_p_sfunc': 'Function Name:',
-        'ctx_copy': 'Copy',
-        'ctx_paste': 'Paste',
-        'ctx_sel_all': 'Select All',
-        'untitled': 'untitled',
-        'ctrl_button': 'Button',
-        'ctrl_frame': 'Frame1',
-        'ctrl_check': 'Check1',
-        'ctrl_option': 'Option1',
-        'ctrl_combo': 'Combo1',
-        'ctrl_list': 'List1',
-        'ctrl_timer': 'Timer1',
-    },
-    'es': {
-        'toolbox_title': '-Herr.-',
-        'tools': ["Mover/Tam", "Casilla", "Desplegable", "Boton Cmd", "Marco", "BarrDespl H", "Etiqueta", "Lista", "Opcion", "Texto", "Temp.", "BarrDespl V"],
-        'prop_title': 'Propiedades',
-        'prop_no_sel': 'Sin seleccion.',
-        'prop_type': 'Tipo: {}',
-        'prop_form': 'Formulario',
-        'prop_name': 'Nombr:',
-        'prop_cap': 'Texto:',
-        'prop_x': 'X:   ',
-        'prop_y': 'Y:   ',
-        'prop_w': 'Anch:',
-        'prop_h': 'Alto:',
-        'prop_val': 'Val: ',
-        'prop_items': 'Items:',
-        'prop_idx': 'Ind: ',
-        'prop_intrv': 'Intrv:',
-        'prop_value': 'Valor:',
-        'prop_min': 'Min:  ',
-        'prop_max': 'Max:  ',
-        'prop_hscroll': 'DesplH: ',
-        'prop_vscroll': 'DesplV: ',
-        'prop_syntaxhl': 'Sintaxis:',
-        'prop_edit': 'Editabl:',
-        'prop_color': 'Color:',
-        'prop_pinned': 'Anclad:',
-        'prop_resiz': 'Redim: ',
-        'prop_hidden': 'Oculto:',
-        'prop_fg': 'Color T:',
-        'prop_bg': 'Color F:',
-        'menu_top': ' Archivo  Editar  [EJECUTAR ] Editor de Menus ',
-        'menu_top_run': ' [DETENER] ',
-        'menu_file': [" Guardar Proyecto       ", " Guardar Proyecto Como... ", " Cargar Proyecto...    ", " Salir del IDE           "],
-        'menu_edit': [" Borrar Control Seleccionado "],
-        'msg_saved': 'Proyecto guardado en {}',
-        'msg_loaded': 'Proyecto cargado desde {}',
-        'msg_save_err': 'Error de guardado:\n{}',
-        'msg_load_err': 'Error de carga:\n{}',
-        'msg_sel_file': 'Por favor seleccione un archivo.',
-        'me_title': 'Editor de Menus',
-        'me_sel': 'Menu Seleccionado',
-        'me_add_top': 'Anadir Menu Princ',
-        'me_add_sub': 'Anadir Submenu',
-        'me_del_sel': 'Borrar Seleccion',
-        'me_del_menu': 'Borrar Menu',
-        'me_edit_code': 'Editar Codigo',
-        'me_close': 'Cerrar Editor',
-        'me_ok': 'Aceptar',
-        'me_lbl_sel': 'Menu Selecc:',
-        'me_p_top': 'Etiqueta de Menu Princ:',
-        'me_p_func': 'Funcion (ej. mnu_arch):',
-        'me_p_sub': 'Etiqueta de Submenu:',
-        'me_p_sfunc': 'Nombre de Funcion:',
-        'ctx_copy': 'Copiar',
-        'ctx_paste': 'Pegar',
-        'ctx_sel_all': 'Sel. Todo',
-        'untitled': 'sin titulo',
-        'ctrl_button': 'Boton',
-        'ctrl_frame': 'Marco1',
-        'ctrl_check': 'Casilla1',
-        'ctrl_option': 'Opcion1',
-        'ctrl_combo': 'Combo1',
-        'ctrl_list': 'Lista1',
-        'ctrl_timer': 'Temp1',
-    },
-    'jp': {
-        'toolbox_title': '-ツール-',
-        'tools': ["移動/ｻｲｽﾞ", "ﾁｪｯｸﾎﾞｯｸｽ", "ｺﾝﾎﾞﾎﾞｯｸｽ", "ｺﾏﾝﾄﾞﾎﾞﾀﾝ", "ﾌﾚｰﾑ", "水平ｽｸﾛｰﾙ", "ﾗﾍﾞﾙ", "ﾘｽﾄﾎﾞｯｸｽ", "ｵﾌﾟｼｮﾝ", "ﾃｷｽﾄﾎﾞｯｸｽ", "ﾀｲﾏｰ", "垂直ｽｸﾛｰﾙ"],
-        'prop_title': 'プロパティ',
-        'prop_no_sel': '選択なし',
-        'prop_type': '種類: {}',
-        'prop_form': 'ﾌｫｰﾑ',
-        'prop_name': '名前:',
-        'prop_cap': 'ｷｬﾌﾟ:',
-        'prop_x': 'X:   ',
-        'prop_y': 'Y:   ',
-        'prop_w': '幅:  ',
-        'prop_h': '高:  ',
-        'prop_val': '値:  ',
-        'prop_items': '項目: ',
-        'prop_idx': 'ｲﾝﾃﾞ: ',
-        'prop_intrv': '間隔: ',
-        'prop_value': '値:   ',
-        'prop_min': '最小: ',
-        'prop_max': '最大: ',
-        'prop_hscroll': '水平ｽｸ:',
-        'prop_vscroll': '垂直ｽｸ:',
-        'prop_syntaxhl': '構文強調:',
-        'prop_edit': '編集可: ',
-        'prop_color': '色:  ',
-        'prop_pinned': '固定: ',
-        'prop_resiz': '可変: ',
-        'prop_hidden': '非表示:',
-        'prop_fg': '文字色:',
-        'prop_bg': '背景色:',
-        'menu_top': ' ファイル  編集  [実行 ] メニューエディタ ',
-        'menu_top_run': ' [停止] ',
-        'menu_file': [" プロジェクト保存   ", " 名前を付けて保存... ", " プロジェクト開く...  ", " IDEを終了する      "],
-        'menu_edit': [" 選択したコントロールを削除 "],
-        'msg_saved': '{} に保存しました',
-        'msg_loaded': '{} から読込ました',
-        'msg_save_err': '保存エラー:\n{}',
-        'msg_load_err': '読込エラー:\n{}',
-        'msg_sel_file': 'ファイルを選択してください。',
-        'me_title': 'メニューエディタ',
-        'me_sel': '選択メニュー',
-        'me_add_top': 'トップメニュー追加',
-        'me_add_sub': 'サブメニュー追加',
-        'me_del_sel': '選択項目を削除',
-        'me_del_menu': 'メニューを削除',
-        'me_edit_code': 'コードを編集',
-        'me_close': '閉じる',
-        'me_ok': 'OK',
-        'me_lbl_sel': '選択メニュー:',
-        'me_p_top': 'トップメニュー名:',
-        'me_p_func': '関数 (例: mnu_file):',
-        'me_p_sub': 'サブメニュー名:',
-        'me_p_sfunc': '関数名:',
-        'ctx_copy': 'ｺﾋﾟｰ',
-        'ctx_paste': '貼付',
-        'ctx_sel_all': '全て選択',
-        'untitled': '無題',
-        'ctrl_button': 'ﾎﾞﾀﾝ',
-        'ctrl_frame': 'ﾌﾚｰﾑ1',
-        'ctrl_check': 'ﾁｪｯｸ1',
-        'ctrl_option': 'ｵﾌﾟｼｮﾝ1',
-        'ctrl_combo': 'ｺﾝﾎﾞ1',
-        'ctrl_list': 'ﾘｽﾄ1',
-        'ctrl_timer': 'ﾀｲﾏ1',
-    }
-}
-
-def _t(key):
-    return I18N[LANG][key]
-
-def d_len(s):
-    return sum(2 if unicodedata.east_asian_width(c) in 'WF' else 1 for c in str(s))
-
-def d_pad(s, width, fill=" "):
-    s = str(s)
-    curr_w = 0
-    res = ""
-    for c in s:
-        cw = 2 if unicodedata.east_asian_width(c) in 'WF' else 1
-        if curr_w + cw > width: break
-        res += c
-        curr_w += cw
-    return res + fill * (width - curr_w)
 
 PYTHON_KEYWORDS = {
     "def", "class", "if", "elif", "else", "while", "for", "in", 
@@ -361,8 +143,7 @@ class UIControl:
         return c
 
 class Window:
-    def __init__(self, x, y, w, h, title="", name_id="Form1"):
-        if not title: title = _t('untitled')
+    def __init__(self, x, y, w, h, title="untitled", name_id="Form1"):
         self.x, self.y, self.w, self.h = x, y, w, h
         self.title, self.name_id = title, name_id
         self.controls = []
@@ -386,7 +167,7 @@ class Window:
 
     @classmethod
     def from_dict(cls, data):
-        w = cls(data['x'], data['y'], data['w'], data['h'], data.get('title', _t('untitled')), data.get('name_id', 'Form1'))
+        w = cls(data['x'], data['y'], data['w'], data['h'], data.get('title', 'untitled'), data.get('name_id', 'Form1'))
         w.pinned_topmost = data.get('pinned_topmost', False)
         w.resizable = data.get('resizable', True)
         w.hidden = data.get('hidden', False)
@@ -400,18 +181,18 @@ class Window:
     def add_control(self, cx, cy, ctype, ctitle):
         if len(self.controls) < 30:
             name_id = f"ctrl{len(self.controls) + 1}"
-            if ctype == 3: ctrl = UIControl(cx, cy, 12, 3, ctype, name_id, _t('ctrl_button'))
+            if ctype == 3: ctrl = UIControl(cx, cy, 12, 3, ctype, name_id, "Button")
             elif ctype == 13: ctrl = UIControl(cx, cy, 15, 3, ctype, name_id, "")
-            elif ctype == 7: ctrl = UIControl(cx, cy, 20, 8, ctype, name_id, _t('ctrl_frame'))
-            elif ctype == 1: ctrl = UIControl(cx, cy, 15, 1, ctype, name_id, _t('ctrl_check'))
-            elif ctype == 11: ctrl = UIControl(cx, cy, 15, 1, ctype, name_id, _t('ctrl_option'))
+            elif ctype == 7: ctrl = UIControl(cx, cy, 20, 8, ctype, name_id, "Frame1")
+            elif ctype == 1: ctrl = UIControl(cx, cy, 15, 1, ctype, name_id, "Check1")
+            elif ctype == 11: ctrl = UIControl(cx, cy, 15, 1, ctype, name_id, "Option1")
             elif ctype == 2:
-                ctrl = UIControl(cx, cy, 15, 1, ctype, name_id, _t('ctrl_combo'))
+                ctrl = UIControl(cx, cy, 15, 1, ctype, name_id, "Combo1")
                 ctrl.items = ["Item 1", "Item 2", "Item 3"]
             elif ctype == 10:
-                ctrl = UIControl(cx, cy, 15, 4, ctype, name_id, _t('ctrl_list'))
+                ctrl = UIControl(cx, cy, 15, 4, ctype, name_id, "List1")
                 ctrl.items = ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5"]
-            elif ctype == 14: ctrl = UIControl(cx, cy, 10, 1, ctype, name_id, _t('ctrl_timer'))
+            elif ctype == 14: ctrl = UIControl(cx, cy, 10, 1, ctype, name_id, "Timer1")
             elif ctype == 8: 
                 ctrl = UIControl(cx, cy, 15, 1, ctype, name_id, "")
                 ctrl.value, ctrl.min_val, ctrl.max_val = 0, 0, 100
@@ -447,12 +228,19 @@ class Window:
         write_at(stdscr, self.x, self.y + self.h - 1, "└" + "─" * (self.w - 2) + "┘", C_BORDER)
 
         title_str = f" {self.title} "
-        tx = self.x + (self.w // 2) - (d_len(title_str) // 2)
-        write_clipped_raw(stdscr, tx, self.y, title_str, C_BORDER, self.x, self.w)
+        tx = self.x + (self.w // 2) - (len(title_str) // 2)
+        write_at(stdscr, tx, self.y, title_str, C_BORDER)
 
         def write_clipped(cx, cy, text, attr):
             if cy <= self.y or cy >= self.y + self.h - 1: return
-            write_clipped_raw(stdscr, cx, cy, text, attr, self.x + 1, self.w - 2)
+            min_x = self.x + 1
+            max_x = self.x + self.w - 2
+            if cx > max_x or cx + len(text) - 1 < min_x: return
+            start_idx = max(0, min_x - cx)
+            end_idx = min(len(text), max_x - cx + 1)
+            actual_x = cx + start_idx
+            clipped_text = text[start_idx:end_idx]
+            if clipped_text: write_at(stdscr, actual_x, cy, clipped_text, attr)
 
         for i, c in enumerate(self.controls):
             if run_mode and c.tool_type == 14: continue 
@@ -474,9 +262,9 @@ class Window:
                 for r in range(1, actual_h - 1):
                     write_clipped(draw_x, draw_y + r, "│", TOP_C)
                     if r == actual_h // 2:
-                        pad = (c.w - 2 - d_len(c.caption)) // 2
+                        pad = (c.w - 2 - len(c.caption)) // 2
                         if is_pressed: pad += 1 
-                        text = d_pad(" " * max(0, pad) + c.caption, c.w - 2)
+                        text = (" " * pad + c.caption + " " * (c.w - 2))[:c.w - 2]
                         write_clipped(draw_x + 1, draw_y + r, text, base_color)
                     else:
                         write_clipped(draw_x + 1, draw_y + r, " " * (c.w - 2), base_color)
@@ -534,28 +322,25 @@ class Window:
                                     if idx < len(char_attrs): char_attrs[idx] = attr
                                     idx += 1
                                     
-                        # Handle slicing with CJK display width logic internally
-                        curr_x, str_disp_w = draw_x, 0
-                        for col, char in enumerate(line_text):
-                            if col < c.scroll_x: 
-                                str_disp_w += d_len(char)
-                                continue
-                            if str_disp_w >= vw: break
-                            
-                            actual_x = col
-                            attr = char_attrs[col]
-                            if is_selected(actual_y, actual_x, c.sel_start, c.sel_end): attr = attr | curses.A_REVERSE
+                        visible_line = line_text[c.scroll_x : c.scroll_x + vw]
+                        visible_attrs = char_attrs[c.scroll_x : c.scroll_x + vw]
+                        
+                        curr_x = draw_x
+                        for col, char in enumerate(visible_line):
+                            actual_x = c.scroll_x + col
+                            attr = visible_attrs[col]
+                            if is_selected(actual_y, actual_x, c.sel_start, c.sel_end):
+                                attr = attr | curses.A_REVERSE
                             write_clipped(curr_x, draw_y + r, char, attr)
-                            cw = d_len(char)
-                            curr_x += cw
-                            str_disp_w += cw
+                            curr_x += 1
                             
-                        if str_disp_w < vw:
-                            pad_len = vw - str_disp_w
+                        if len(visible_line) < vw:
+                            pad_len = vw - len(visible_line)
                             for padding_idx in range(pad_len):
                                 attr = c_attr
-                                actual_x = len(line_text) + padding_idx
-                                if is_selected(actual_y, actual_x, c.sel_start, c.sel_end): attr = attr | curses.A_REVERSE
+                                actual_x = c.scroll_x + len(visible_line) + padding_idx
+                                if is_selected(actual_y, actual_x, c.sel_start, c.sel_end):
+                                    attr = attr | curses.A_REVERSE
                                 write_clipped(curr_x + padding_idx, draw_y + r, " ", attr)
                     else:
                         write_clipped(draw_x, draw_y + r, " " * vw, c_attr)
@@ -569,7 +354,7 @@ class Window:
                         write_clipped(draw_x + c.w - 1, draw_y + r, char, C_TEXTBOX)
                         
                 if c.h_scroll:
-                    max_len = max([d_len(l) for l in lines] + [0])
+                    max_len = max([len(l) for l in lines] + [0])
                     for col in range(vw):
                         char = "▒"
                         if max_len > vw:
@@ -583,7 +368,7 @@ class Window:
             elif c.tool_type == 2: 
                 disp_text = c.caption
                 if c.items and 0 <= c.list_index < len(c.items): disp_text = c.items[c.list_index]
-                text = d_pad(disp_text, c.w - 1) + "▼"
+                text = (disp_text + " " * c.w)[:c.w-1] + "▼"
                 write_clipped(draw_x, draw_y, text, C_TEXTBOX)
 
             elif c.tool_type == 10: 
@@ -591,14 +376,14 @@ class Window:
                     idx = c.scroll_offset + r
                     if c.items and 0 <= idx < len(c.items):
                         disp_text = c.items[idx]
-                        text = d_pad(disp_text, c.w)
+                        text = (disp_text + " " * c.w)[:c.w]
                         attr = C_HANDLE if idx == c.list_index else c_attr
                         write_clipped(draw_x, draw_y + r, text, attr)
                     else:
                         write_clipped(draw_x, draw_y + r, " " * c.w, c_attr)
 
             elif c.tool_type == 14: 
-                write_clipped(draw_x, draw_y, d_pad("[⏱] " + c.name_id, c.w), c_attr)
+                write_clipped(draw_x, draw_y, ("[⏱] " + c.name_id)[:c.w], c_attr)
 
             elif c.tool_type == 7: 
                 write_clipped(draw_x, draw_y, "┌" + "─" * (c.w - 2) + "┐", C_BORDER)
@@ -608,13 +393,13 @@ class Window:
                     write_clipped(draw_x + c.w - 1, draw_y + r, "│", C_BORDER)
                 write_clipped(draw_x, draw_y + c.h - 1, "└" + "─" * (c.w - 2) + "┘", C_BORDER)
                 cap_str = f" {c.caption} "
-                if d_len(cap_str) <= c.w - 2: write_clipped(draw_x + 2, draw_y, cap_str, C_BORDER)
+                if len(cap_str) <= c.w - 2: write_clipped(draw_x + 2, draw_y, cap_str, C_BORDER)
                     
             elif c.tool_type == 1: 
                 for r in range(c.h):
                     if r == 0:
                         mark = "X" if c.value else " "
-                        text = d_pad(f"[{mark}] {c.caption}", c.w)
+                        text = (f"[{mark}] {c.caption}" + " " * c.w)[:c.w]
                         write_clipped(draw_x, draw_y + r, text, C_TEXTBOX)
                     else: write_clipped(draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
                         
@@ -622,14 +407,14 @@ class Window:
                 for r in range(c.h):
                     if r == 0:
                         mark = "•" if c.value else " "
-                        text = d_pad(f"({mark}) {c.caption}", c.w)
+                        text = (f"({mark}) {c.caption}" + " " * c.w)[:c.w]
                         write_clipped(draw_x, draw_y + r, text, C_TEXTBOX)
                     else: write_clipped(draw_x, draw_y + r, " " * c.w, C_TEXTBOX)
                         
             else:  
                 for r in range(c.h):
                     if r == 0:
-                        text = d_pad(c.caption, c.w)
+                        text = (c.caption + " " * c.w)[:c.w]
                         write_clipped(draw_x, draw_y + r, text, c_attr)
                     else: write_clipped(draw_x, draw_y + r, " " * c.w, c_attr)
 
@@ -652,9 +437,9 @@ class Toolbox:
         self.x, self.y, self.w = x, y, 16
         self.active_tool = 0
         self.tools = [
-            (0, _t('tools')[0]), (1, _t('tools')[1]), (2, _t('tools')[2]), (3, _t('tools')[3]),
-            (7, _t('tools')[4]), (8, _t('tools')[5]), (9, _t('tools')[6]), (10, _t('tools')[7]),
-            (11, _t('tools')[8]), (13, _t('tools')[9]), (14, _t('tools')[10]), (15, _t('tools')[11])
+            (0, "Move/Size"), (1, "Check Box"), (2, "Combo Box"), (3, "Command Btn"),
+            (7, "Frame"), (8, "HScrollBar"), (9, "Label"), (10, "List Box"),
+            (11, "Option Btn"), (13, "Text Box"), (14, "Timer"), (15, "VScrollBar")
         ]
         self.h = len(self.tools) + 4
 
@@ -666,14 +451,13 @@ class Toolbox:
     def draw(self, stdscr, colors):
         C_TB, C_ACTIVE = colors['textbox'], colors['active_tool']
         write_at(stdscr, self.x, self.y, "┌" + "─" * (self.w - 2) + "┐", C_TB)
-        title = _t('toolbox_title')
-        write_clipped_raw(stdscr, self.x + (self.w // 2) - (d_len(title) // 2), self.y, title, C_TB, self.x, self.w)
+        write_at(stdscr, self.x + (self.w // 2) - 3, self.y, "-Tools-", C_TB)
         curr_y = self.y + 1
         
         ttype, tname = self.tools[0]
         write_at(stdscr, self.x, curr_y, "│", C_TB)
-        text = d_pad(tname, self.w - 2)
-        write_clipped_raw(stdscr, self.x + 1, curr_y, text, C_ACTIVE if self.active_tool == ttype else C_TB, self.x+1, self.w-2)
+        text = (tname + " " * (self.w - 2))[:self.w - 2]
+        write_at(stdscr, self.x + 1, curr_y, text, C_ACTIVE if self.active_tool == ttype else C_TB)
         write_at(stdscr, self.x + self.w - 1, curr_y, "│", C_TB)
         curr_y += 1
         
@@ -683,8 +467,8 @@ class Toolbox:
         for i in range(1, len(self.tools)):
             ttype, tname = self.tools[i]
             write_at(stdscr, self.x, curr_y, "│", C_TB)
-            text = d_pad(tname, self.w - 2)
-            write_clipped_raw(stdscr, self.x + 1, curr_y, text, C_ACTIVE if self.active_tool == ttype else C_TB, self.x+1, self.w-2)
+            text = (tname + " " * (self.w - 2))[:self.w - 2]
+            write_at(stdscr, self.x + 1, curr_y, text, C_ACTIVE if self.active_tool == ttype else C_TB)
             write_at(stdscr, self.x + self.w - 1, curr_y, "│", C_TB)
             curr_y += 1
             
@@ -702,91 +486,82 @@ class Toolbox:
         return False
 
 def write_at(stdscr, x, y, text, attr=0):
-    try: stdscr.addstr(y, x, str(text), attr)
+    try: stdscr.addstr(y, x, text, attr)
     except curses.error: pass
-
-def write_clipped_raw(stdscr, cx, cy, text, attr, min_x, max_w):
-    curr_x = cx
-    for c in str(text):
-        cw = d_len(c)
-        if min_x <= curr_x and curr_x + cw <= min_x + max_w:
-            try: stdscr.addstr(cy, curr_x, c, attr)
-            except curses.error: pass
-        curr_x += cw
 
 def draw_properties(stdscr, prop_win, selected_win, selected_ctrl_idx, editing_prop, edit_buffer, colors, tools):
     C_BG, C_TB, C_LABEL = colors['bg'], colors['textbox'], colors['prop_label']
     for py in range(1, prop_win.h - 1): write_at(stdscr, prop_win.x + 1, prop_win.y + py, " " * (prop_win.w - 2), C_BG)
 
     def draw_prop(ly, lbl, p_id, val_str):
-        write_clipped_raw(stdscr, prop_win.x + 2, prop_win.y + ly, lbl, C_LABEL, prop_win.x + 1, prop_win.w - 2)
+        write_at(stdscr, prop_win.x + 2, prop_win.y + ly, lbl, C_LABEL)
         if editing_prop == p_id:
             eb = edit_buffer + "_"
-            display_text = eb[-12:] if len(eb) > 12 else d_pad(eb, 12)
+            display_text = eb[-10:] if len(eb) > 10 else (eb + "          ")[:10]
         else:
             vs = str(val_str)
-            display_text = vs[:12] if len(vs) > 12 else d_pad(vs, 12)
-        write_clipped_raw(stdscr, prop_win.x + 12, prop_win.y + ly, display_text, C_TB, prop_win.x + 1, prop_win.w - 2)
+            display_text = vs[:10] if len(vs) > 10 else (vs + "          ")[:10]
+        write_at(stdscr, prop_win.x + 8, prop_win.y + ly, display_text, C_TB)
 
     if selected_win is not None and selected_ctrl_idx >= 0:
         c = selected_win.controls[selected_ctrl_idx]
-        tool_name = _t('ctrl_timer') if c.tool_type == 14 else tools.get_tool_name(c.tool_type).strip()
-        write_clipped_raw(stdscr, prop_win.x + 2, prop_win.y + 2, _t('prop_type').format(tool_name), C_LABEL, prop_win.x + 1, prop_win.w - 2)
+        tool_name = "Timer" if c.tool_type == 14 else tools.get_tool_name(c.tool_type).strip()
+        write_at(stdscr, prop_win.x + 2, prop_win.y + 2, f"Type: {tool_name}", C_LABEL)
         write_at(stdscr, prop_win.x + 1, prop_win.y + 3, "─" * (prop_win.w - 2), C_BG)
 
-        draw_prop(5, _t('prop_name'), 1, c.name_id)
-        draw_prop(6, _t('prop_cap'), 2, c.caption)
-        draw_prop(7, _t('prop_x'), 3, c.x)
-        draw_prop(8, _t('prop_y'), 4, c.y)
-        draw_prop(9, _t('prop_w'), 5, c.w)
-        draw_prop(10, _t('prop_h'), 6, c.h)
+        draw_prop(5, "Name:", 1, c.name_id)
+        draw_prop(6, "Cap: ", 2, c.caption)
+        draw_prop(7, "X:   ", 3, c.x)
+        draw_prop(8, "Y:   ", 4, c.y)
+        draw_prop(9, "W:   ", 5, c.w)
+        draw_prop(10,"H:   ", 6, c.h)
         
         if c.tool_type in (1, 11): 
-            write_clipped_raw(stdscr, prop_win.x + 2, prop_win.y + 11, _t('prop_val'), C_LABEL, prop_win.x + 1, prop_win.w - 2)
+            write_at(stdscr, prop_win.x + 2, prop_win.y + 11, "Val: ", C_LABEL)
             mark = "X" if c.value else " "
-            write_clipped_raw(stdscr, prop_win.x + 12, prop_win.y + 11, d_pad(f"[{mark}]", 12), C_TB, prop_win.x + 1, prop_win.w - 2)
+            write_at(stdscr, prop_win.x + 8, prop_win.y + 11, f"[{mark}]       ", C_TB)
         if c.tool_type == 2:
-            draw_prop(11, _t('prop_items'), 8, ",".join(c.items))
-            draw_prop(12, _t('prop_idx'), 9, str(c.list_index))
+            draw_prop(11,"Items:", 8, ",".join(c.items))
+            draw_prop(12,"Idx: ", 9, str(c.list_index))
         if c.tool_type == 10:
-            draw_prop(11, _t('prop_items'), 8, ",".join(c.items))
-            draw_prop(12, _t('prop_idx'), 9, str(c.list_index))
-            draw_prop(13, _t('prop_fg'), 12, str(getattr(c, 'fg_color', -1)))
-            draw_prop(14, _t('prop_bg'), 13, str(getattr(c, 'custom_bg', -1)))
-        if c.tool_type == 14: draw_prop(11, _t('prop_intrv'), 7, str(c.interval))
+            draw_prop(11,"Items:", 8, ",".join(c.items))
+            draw_prop(12,"Idx: ", 9, str(c.list_index))
+            draw_prop(13,"FGColor:", 12, str(getattr(c, 'fg_color', -1)))
+            draw_prop(14,"BGColor:", 13, str(getattr(c, 'custom_bg', -1)))
+        if c.tool_type == 14: draw_prop(11,"Intrv:", 7, str(c.interval))
         if c.tool_type in (8, 15):
-            draw_prop(11, _t('prop_value'), 7, getattr(c, 'value', 0))
-            draw_prop(12, _t('prop_min'), 10, getattr(c, 'min_val', 0))
-            draw_prop(13, _t('prop_max'), 11, getattr(c, 'max_val', 100))
+            draw_prop(11,"Value:", 7, getattr(c, 'value', 0))
+            draw_prop(12,"Min:  ", 10, getattr(c, 'min_val', 0))
+            draw_prop(13,"Max:  ", 11, getattr(c, 'max_val', 100))
         if c.tool_type == 13:
-            draw_prop(11, _t('prop_hscroll'), 7, "[X]" if getattr(c, 'h_scroll', False) else "[ ]")
-            draw_prop(12, _t('prop_vscroll'), 8, "[X]" if getattr(c, 'v_scroll', False) else "[ ]")
-            draw_prop(13, _t('prop_syntaxhl'), 10, "[X]" if getattr(c, 'syntax_hl', False) else "[ ]")
-            draw_prop(14, _t('prop_edit'), 11, "[X]" if getattr(c, 'editable', True) else "[ ]")
-            draw_prop(15, _t('prop_fg'), 12, str(getattr(c, 'fg_color', -1)))
-            draw_prop(16, _t('prop_bg'), 13, str(getattr(c, 'custom_bg', -1)))
+            draw_prop(11,"HScroll:", 7, "[X]" if getattr(c, 'h_scroll', False) else "[ ]")
+            draw_prop(12,"VScroll:", 8, "[X]" if getattr(c, 'v_scroll', False) else "[ ]")
+            draw_prop(13,"SyntaxHL:", 10, "[X]" if getattr(c, 'syntax_hl', False) else "[ ]")
+            draw_prop(14,"Editable:", 11, "[X]" if getattr(c, 'editable', True) else "[ ]")
+            draw_prop(15,"FGColor:", 12, str(getattr(c, 'fg_color', -1)))
+            draw_prop(16,"BGColor:", 13, str(getattr(c, 'custom_bg', -1)))
         if c.tool_type == 3: 
-            write_clipped_raw(stdscr, prop_win.x + 2, prop_win.y + 11, _t('prop_color'), C_LABEL, prop_win.x + 1, prop_win.w - 2)
+            write_at(stdscr, prop_win.x + 2, prop_win.y + 11, "Color:", C_LABEL)
             palette = [12, 13, 14, 15, 16, 17] 
             for p_idx, p_color in enumerate(palette):
-                write_at(stdscr, prop_win.x + 12 + (p_idx * 2), prop_win.y + 11, "  ", curses.color_pair(p_color))
+                write_at(stdscr, prop_win.x + 9 + (p_idx * 2), prop_win.y + 11, "  ", curses.color_pair(p_color))
     elif selected_win is not None and selected_ctrl_idx == -1:
         w = selected_win
-        write_clipped_raw(stdscr, prop_win.x + 2, prop_win.y + 2, _t('prop_type').format(_t('prop_form')), C_LABEL, prop_win.x + 1, prop_win.w - 2)
+        write_at(stdscr, prop_win.x + 2, prop_win.y + 2, f"Type: Form", C_LABEL)
         write_at(stdscr, prop_win.x + 1, prop_win.y + 3, "─" * (prop_win.w - 2), C_BG)
-        draw_prop(5, _t('prop_name'), 1, w.name_id)
-        draw_prop(6, _t('prop_cap'), 2, w.title)
-        draw_prop(7, _t('prop_x'), 3, w.x)
-        draw_prop(8, _t('prop_y'), 4, w.y)
-        draw_prop(9, _t('prop_w'), 5, w.w)
-        draw_prop(10, _t('prop_h'), 6, w.h)
-        draw_prop(11, _t('prop_pinned'), 7, "[X]" if w.pinned_topmost else "[ ]")
-        draw_prop(12, _t('prop_resiz'), 8, "[X]" if w.resizable else "[ ]")
-        draw_prop(13, _t('prop_hidden'), 9, "[X]" if w.hidden else "[ ]")
-        draw_prop(14, _t('prop_fg'), 10, str(getattr(w, 'fg_color', -1)))
-        draw_prop(15, _t('prop_bg'), 11, str(getattr(w, 'custom_bg', -1)))
+        draw_prop(5, "Name:", 1, w.name_id)
+        draw_prop(6, "Cap: ", 2, w.title)
+        draw_prop(7, "X:   ", 3, w.x)
+        draw_prop(8, "Y:   ", 4, w.y)
+        draw_prop(9, "W:   ", 5, w.w)
+        draw_prop(10,"H:   ", 6, w.h)
+        draw_prop(11,"Pinned:", 7, "[X]" if w.pinned_topmost else "[ ]")
+        draw_prop(12,"Resiz:", 8, "[X]" if w.resizable else "[ ]")
+        draw_prop(13,"Hidden:", 9, "[X]" if w.hidden else "[ ]")
+        draw_prop(14,"FGColor:", 10, str(getattr(w, 'fg_color', -1)))
+        draw_prop(15,"BGColor:", 11, str(getattr(w, 'custom_bg', -1)))
     else:
-        write_clipped_raw(stdscr, prop_win.x + 2, prop_win.y + 2, _t('prop_no_sel'), C_LABEL, prop_win.x + 1, prop_win.w - 2)
+        write_at(stdscr, prop_win.x + 2, prop_win.y + 2, "No selection.", C_LABEL)
 
 def handle_combobox_dropdown(stdscr, dx, dy, w, items, colors):
     if not items: return None
@@ -801,9 +576,9 @@ def handle_combobox_dropdown(stdscr, dx, dy, w, items, colors):
             idx = scroll + r
             write_at(stdscr, dx, dy + 1 + r, "│", C_BORDER)
             if idx < len(items):
-                text = d_pad(items[idx], w - 2)
+                text = (items[idx] + " " * (w - 2))[:w - 2]
                 attr = C_HL if idx == selected else C_BG
-                write_clipped_raw(stdscr, dx + 1, dy + 1 + r, text, attr, dx + 1, w - 2)
+                write_at(stdscr, dx + 1, dy + 1 + r, text, attr)
             else:
                 write_at(stdscr, dx + 1, dy + 1 + r, " " * (w - 2), C_BG)
             write_at(stdscr, dx + w - 1, dy + 1 + r, "│", C_BORDER)
@@ -833,7 +608,7 @@ def handle_combobox_dropdown(stdscr, dx, dy, w, items, colors):
 def draw_msgbox(stdscr, msg, colors):
     C_BORDER, C_BG = colors['border'], colors['bg']
     lines = msg.split('\n')
-    w = max([d_len(l) for l in lines] + [20]) + 4
+    w = max([len(l) for l in lines] + [20]) + 4
     h = len(lines) + 4
     x, y = (curses.COLS - w) // 2, (curses.LINES - h) // 2
     write_at(stdscr, x, y, "┌" + "─" * (w - 2) + "┐", C_BORDER)
@@ -842,9 +617,8 @@ def draw_msgbox(stdscr, msg, colors):
         write_at(stdscr, x + 1, y + i, " " * (w - 2), C_BG)
         write_at(stdscr, x + w - 1, y + i, "│", C_BORDER)
     write_at(stdscr, x, y + h - 1, "└" + "─" * (w - 2) + "┘", C_BORDER)
-    for i, l in enumerate(lines): write_clipped_raw(stdscr, x + 2, y + 2 + i, l, C_BG, x + 1, w - 2)
-    btn = _t('me_ok')
-    write_clipped_raw(stdscr, x + (w - d_len(btn) - 4) // 2, y + h - 2, f"[ {btn} ]", C_BORDER, x + 1, w - 2)
+    for i, l in enumerate(lines): write_at(stdscr, x + 2, y + 2 + i, l, C_BG)
+    write_at(stdscr, x + (w - 6) // 2, y + h - 2, "[ OK ]", C_BORDER)
 
 def show_sync_msgbox(stdscr, msg, colors):
     draw_msgbox(stdscr, msg, colors)
@@ -861,13 +635,12 @@ def show_sync_msgbox(stdscr, msg, colors):
 
 def handle_file_menu(stdscr, colors):
     C_BORDER, C_BG = colors['border'], colors['bg']
-    menu_items = _t('menu_file')
-    w = max(d_len(i) for i in menu_items) + 4
-    h, x, y = len(menu_items) + 2, 1, 1
+    menu_items = [" Save Project       ", " Save Project As... ", " Load Project...    ", " Exit IDE           "]
+    w, h, x, y = 24, len(menu_items) + 2, 1, 1
     write_at(stdscr, x, y, "┌" + "─" * (w - 2) + "┐", C_BORDER)
     for i, item in enumerate(menu_items):
         write_at(stdscr, x, y + i + 1, "│", C_BORDER)
-        write_clipped_raw(stdscr, x + 1, y + i + 1, d_pad(item, w - 2), C_BG, x + 1, w - 2)
+        write_at(stdscr, x + 1, y + i + 1, item, C_BG)
         write_at(stdscr, x + w - 1, y + i + 1, "│", C_BORDER)
     write_at(stdscr, x, y + h - 1, "└" + "─" * (w - 2) + "┘", C_BORDER)
     stdscr.refresh()
@@ -890,13 +663,12 @@ def handle_file_menu(stdscr, colors):
 
 def handle_edit_menu(stdscr, colors):
     C_BORDER, C_BG = colors['border'], colors['bg']
-    menu_items = _t('menu_edit')
-    w = max(d_len(i) for i in menu_items) + 4
-    h, x, y = len(menu_items) + 2, 7 + d_len(_t('menu_top').split('Edit')[0]), 1
+    menu_items = [" Delete Selected Control "]
+    w, h, x, y = 27, len(menu_items) + 2, 7, 1
     write_at(stdscr, x, y, "┌" + "─" * (w - 2) + "┐", C_BORDER)
     for i, item in enumerate(menu_items):
         write_at(stdscr, x, y + i + 1, "│", C_BORDER)
-        write_clipped_raw(stdscr, x + 1, y + i + 1, d_pad(item, w - 2), C_BG, x + 1, w - 2)
+        write_at(stdscr, x + 1, y + i + 1, item, C_BG)
         write_at(stdscr, x + w - 1, y + i + 1, "│", C_BORDER)
     write_at(stdscr, x, y + h - 1, "└" + "─" * (w - 2) + "┘", C_BORDER)
     stdscr.refresh()
@@ -916,7 +688,7 @@ def handle_edit_menu(stdscr, colors):
 
 def prompt_input(stdscr, prompt_title, colors):
     C_BORDER, C_BG, C_TB = colors['border'], colors['bg'], colors['textbox']
-    box_w, box_h = max(40, d_len(prompt_title) + 6), 5
+    box_w, box_h = 40, 5
     box_x, box_y = (curses.COLS - box_w) // 2, (curses.LINES - box_h) // 2
     buffer = ""
     while True:
@@ -927,8 +699,8 @@ def prompt_input(stdscr, prompt_title, colors):
             write_at(stdscr, box_x + box_w - 1, box_y + i, "│", C_BORDER)
         write_at(stdscr, box_x, box_y + box_h - 1, "└" + "─" * (box_w - 2) + "┘", C_BORDER)
         title = f" {prompt_title} "
-        write_clipped_raw(stdscr, box_x + (box_w - d_len(title))//2, box_y, title, C_BORDER, box_x, box_w)
-        write_clipped_raw(stdscr, box_x + 2, box_y + 2, d_pad((buffer + "_"), box_w - 4), C_TB, box_x + 1, box_w - 2)
+        write_at(stdscr, box_x + (box_w - len(title))//2, box_y, title, C_BORDER)
+        write_at(stdscr, box_x + 2, box_y + 2, (buffer + "_").ljust(box_w - 4)[:box_w-4], C_TB)
         stdscr.refresh()
         
         ch = stdscr.getch()
@@ -936,25 +708,25 @@ def prompt_input(stdscr, prompt_title, colors):
         elif ch in (10, 13, curses.KEY_ENTER): return buffer.strip()
         elif ch in (8, 127, curses.KEY_BACKSPACE): buffer = buffer[:-1]
         elif 32 <= ch <= 126 and ch != -1:
-            if d_len(buffer) < box_w - 5: buffer += chr(ch)
+            if len(buffer) < box_w - 5: buffer += chr(ch)
         time.sleep(0.01)
 
 def menu_editor_loop(stdscr, form, colors):
     C_LABEL = colors['prop_label']
-    me_win = Window(10, 5, 52, 16, _t('me_title'), "MenuEditor")
+    me_win = Window(10, 5, 52, 16, "Menu Editor", "MenuEditor")
     me_win.resizable = False
-    me_win.add_control(2, 3, 2, _t('me_sel'))
+    me_win.add_control(2, 3, 2, "Selected Menu")
     me_win.controls[0].w = 46
-    me_win.add_control(2, 6, 3, _t('me_add_top'))
-    me_win.controls[1].w, me_win.controls[1].caption = 22, _t('me_add_top')
-    me_win.add_control(26, 6, 3, _t('me_add_sub'))
-    me_win.controls[2].w, me_win.controls[2].caption = 22, _t('me_add_sub')
-    me_win.add_control(2, 10, 3, _t('me_del_sel'))
-    me_win.controls[3].w, me_win.controls[3].caption = 22, _t('me_del_sel')
-    me_win.add_control(26, 10, 3, _t('me_edit_code'))
-    me_win.controls[4].w, me_win.controls[4].caption = 22, _t('me_edit_code')
-    me_win.add_control(14, 13, 3, _t('me_close'))
-    me_win.controls[5].w, me_win.controls[5].caption = 22, _t('me_ok')
+    me_win.add_control(2, 6, 3, "Add Top Menu")
+    me_win.controls[1].w, me_win.controls[1].caption = 22, "Add Top Menu"
+    me_win.add_control(26, 6, 3, "Add Sub Menu")
+    me_win.controls[2].w, me_win.controls[2].caption = 22, "Add Sub Menu"
+    me_win.add_control(2, 10, 3, "Delete Selected")
+    me_win.controls[3].w, me_win.controls[3].caption = 22, "Delete Menu"
+    me_win.add_control(26, 10, 3, "Edit Code")
+    me_win.controls[4].w, me_win.controls[4].caption = 22, "Edit Code"
+    me_win.add_control(14, 13, 3, "Close Editor")
+    me_win.controls[5].w, me_win.controls[5].caption = 22, "OK"
     flat_list = []
 
     def refresh_combos():
@@ -972,7 +744,7 @@ def menu_editor_loop(stdscr, form, colors):
     while True:
         stdscr.clear()
         me_win.draw(stdscr, colors, pressed_ctrl=pressed_ctrl, run_mode=True)
-        write_clipped_raw(stdscr, me_win.x + 2, me_win.y + 2, _t('me_lbl_sel'), C_LABEL, me_win.x + 1, me_win.w - 2)
+        write_at(stdscr, me_win.x + 2, me_win.y + 2, "Selected Menu:", C_LABEL)
         stdscr.refresh()
         
         ch = stdscr.getch()
@@ -999,18 +771,18 @@ def menu_editor_loop(stdscr, form, colors):
                     if pressed_ctrl >= 0:
                         if me_win.hit_test(mx, my) and me_win.hit_control(mx - me_win.x, my - me_win.y) == pressed_ctrl:
                             if pressed_ctrl == 1: 
-                                lbl = prompt_input(stdscr, _t('me_p_top'), colors)
+                                lbl = prompt_input(stdscr, "Top Menu Label:", colors)
                                 if lbl:
-                                    nm = prompt_input(stdscr, _t('me_p_func'), colors)
+                                    nm = prompt_input(stdscr, "Func (e.g. mnu_file):", colors)
                                     if nm:
                                         form.menus.append(MenuItem(lbl, nm))
                                         refresh_combos()
                                         me_win.controls[0].list_index = len(flat_list) - 1
                             elif pressed_ctrl == 2 and flat_list: 
                                 sel_menu, _, _ = flat_list[me_win.controls[0].list_index]
-                                lbl = prompt_input(stdscr, _t('me_p_sub'), colors)
+                                lbl = prompt_input(stdscr, "Sub-Menu Label:", colors)
                                 if lbl:
-                                    nm = prompt_input(stdscr, _t('me_p_sfunc'), colors)
+                                    nm = prompt_input(stdscr, "Function Name:", colors)
                                     if nm:
                                         sel_menu.sub.append(MenuItem(lbl, nm))
                                         refresh_combos()
@@ -1062,28 +834,15 @@ def insert_text_at_cursor(c, text):
     c.caption = "\n".join(lines)
 
 def main(stdscr):
-    global LANG
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-run", help="Path to JSON")
-    parser.add_argument("-dark-mode", action="store_true", help="Enable dark mode interface")
-    parser.add_argument("-jp", action="store_true", help="Start in Japanese")
-    parser.add_argument("-es", action="store_true", help="Start in Spanish")
-    parser.add_argument("design_file", nargs="?", help="Path to JSON to load in design mode")
-    args, _ = parser.parse_known_args()
-    
-    if args.jp: LANG = 'jp'
-    elif args.es: LANG = 'es'
-    else: LANG = 'en'
-    
-    sys._is_standalone_run = bool(args.run)
-
     setattr(sys, '_ide_dir', os.getcwd())
+    
     curses.curs_set(0)
     stdscr.nodelay(True)
     curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
     curses.mouseinterval(0) 
     print('\033[?1003h', end='', flush=True) 
 
+    # Base legacy palette (1-17)
     for i, (fg, bg) in enumerate([
         (curses.COLOR_WHITE, curses.COLOR_BLUE), (curses.COLOR_BLACK, curses.COLOR_WHITE),
         (curses.COLOR_WHITE, curses.COLOR_WHITE), (curses.COLOR_BLACK, curses.COLOR_CYAN),
@@ -1096,9 +855,19 @@ def main(stdscr):
         (curses.COLOR_WHITE, curses.COLOR_MAGENTA)
     ], 1): curses.init_pair(i, fg, bg)
     
+    # Generate strict standard combinations mapping for all 8x8 generic properties combinations (id: 20-83)
+    # pair_id = 20 + bg_color * 8 + fg_color
     for bg in range(8):
         for fg in range(8):
             curses.init_pair(20 + bg * 8 + fg, fg, bg)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-run", help="Path to JSON")
+    parser.add_argument("-dark-mode", action="store_true", help="Enable dark mode interface")
+    parser.add_argument("design_file", nargs="?", help="Path to JSON to load in design mode")
+    args, _ = parser.parse_known_args()
+    
+    sys._is_standalone_run = bool(args.run)
 
     if args.dark_mode:
         C = {
@@ -1126,8 +895,8 @@ def main(stdscr):
         }
 
     tools = Toolbox(0, 1)
-    main_form = Window(17, 1, 41, 18, "", "Form1")
-    prop_win = Window(48, 8, 26, 14, _t('prop_title'), "Properties")
+    main_form = Window(17, 1, 41, 18, "Form 1", "Form1")
+    prop_win = Window(48, 8, 22, 14, "Properties", "Properties")
     prop_win.pinned_topmost = True
     
     windows = [main_form, prop_win]
@@ -1164,7 +933,7 @@ def main(stdscr):
         def _msgbox(text): run_globals_dict['__msg__'] = str(text)
         def _ide_end():
             if getattr(sys, '_is_standalone_run', False):
-                sys.exit(0)
+                sys.exit(stdscr)
             else:
                 setattr(sys, '_exit_run_mode', True)
                 
@@ -1197,8 +966,10 @@ def main(stdscr):
 
     def launch_editor_json_for_code(target_ctrl_obj, form_ref, wins_list, glb_dict):
         try:
-            ide_dir = getattr(sys, '_ide_dir', os.getcwd())
-            with open(os.path.join(ide_dir, 'editor.json'), 'r', encoding='utf-8') as f: ed_data = json.load(f)
+            #ide_dir = getattr(sys, '_ide_dir', os.getcwd())
+            PACKAGE_DIR = Path(__file__).parent.resolve()
+            editor_json_path = PACKAGE_DIR / "editor.json"
+            with open(editor_json_path, 'r', encoding='utf-8') as f: ed_data = json.load(f)
             editor_f = Window.from_dict(ed_data)
             
             for ctrl in editor_f.controls:
@@ -1223,7 +994,9 @@ def main(stdscr):
     def launch_filedialogue_for_ide(mode, form_ref, wins_list, glb_dict):
         try:
             ide_dir = getattr(sys, '_ide_dir', os.getcwd())
-            with open(os.path.join(ide_dir, 'filedialogue.json'), 'r', encoding='utf-8') as f:
+            PACKAGE_DIR = Path(__file__).parent
+            json_path = PACKAGE_DIR / "filedialogue.json"
+            with open(json_path, 'r', encoding='utf-8') as f:
                 fd_data = json.load(f)
             fd_form = Window.from_dict(fd_data)
             
@@ -1232,8 +1005,9 @@ def main(stdscr):
                     ctrl.code = "def on_click_btn_ok():\n    import sys, os\n    if txt_filename.caption:\n        sys._ide_dialogue_result = os.path.join(os.getcwd(), txt_filename.caption)\n        sys._exit_file_dialogue = True\n    else:\n        msgbox(\"Please select a file.\")\n"
                 elif ctrl.name_id == 'btn_cancel':
                     ctrl.code = "def on_click_btn_cancel():\n    import sys\n    sys._exit_file_dialogue = True\n"
-            
-            proj_dir = os.path.join(ide_dir, 'projects')
+
+            proj_dir = PACKAGE_DIR / "projects"
+            #proj_dir = os.path.join(ide_dir, 'projects')
             if not os.path.exists(proj_dir): os.makedirs(proj_dir)
             os.chdir(proj_dir)
             
@@ -1364,8 +1138,8 @@ def main(stdscr):
                         try:
                             with open(filepath, 'w', encoding='utf-8') as f: json.dump(main_form.to_dict(), f, indent=2)
                             CURRENT_PROJECT_FILE = filepath
-                            show_sync_msgbox(stdscr, _t('msg_saved').format(filepath), C)
-                        except Exception as e: show_sync_msgbox(stdscr, _t('msg_save_err').format(e), C)
+                            show_sync_msgbox(stdscr, f"Project saved to {filepath}", C)
+                        except Exception as e: show_sync_msgbox(stdscr, f"Save Error:\n{e}", C)
                     elif mode == 'load':
                         if not filepath.endswith('.json'): filepath += '.json'
                         try:
@@ -1376,8 +1150,8 @@ def main(stdscr):
                             selected_win, selected_ctrl_idx = main_form, -1
                             design_backup = main_form
                             CURRENT_PROJECT_FILE = filepath
-                            show_sync_msgbox(stdscr, _t('msg_loaded').format(filepath), C)
-                        except Exception as e: show_sync_msgbox(stdscr, _t('msg_load_err').format(e), C)
+                            show_sync_msgbox(stdscr, f"Project loaded from {filepath}", C)
+                        except Exception as e: show_sync_msgbox(stdscr, f"Load Error:\n{e}", C)
             
             if queued_form_to_load:
                 fname = queued_form_to_load
@@ -1390,7 +1164,7 @@ def main(stdscr):
                     selected_win, run_focused_ctrl = main_form, -1
                     stdscr.clear()
                     init_run_mode(main_form, run_globals)
-                except Exception as e: run_globals['__msg__'] = _t('msg_load_err').format(e)
+                except Exception as e: run_globals['__msg__'] = f"Load Error:\n{e}"
 
             current_time_ms = time.time() * 1000
             for w in [main_form]:
@@ -1416,25 +1190,25 @@ def main(stdscr):
 
         menu_positions, stop_pos = [], (0, 0)
         if run_mode:
-            write_at(stdscr, 0, 0, d_pad("", curses.COLS), C['handle'])
+            write_at(stdscr, 0, 0, " " * curses.COLS, C['handle'])
             menu_x = 1
             for m in main_form.menus:
                 lbl = f" {m.label} "
-                write_clipped_raw(stdscr, menu_x, 0, lbl, C['handle'], 0, curses.COLS)
-                w_lbl = d_len(lbl)
-                menu_positions.append((menu_x, menu_x + w_lbl, m))
-                menu_x += w_lbl
+                write_at(stdscr, menu_x, 0, lbl, C['handle'])
+                menu_positions.append((menu_x, menu_x + len(lbl), m))
+                menu_x += len(lbl)
                 
+            # Render [STOP] button UNLESS explicitly launched natively as a standalone app via -run
             if not getattr(sys, '_is_standalone_run', False):
-                stop_lbl = _t('menu_top_run')
+                stop_lbl = " [STOP] "
                 menu_x += 2
-                write_clipped_raw(stdscr, menu_x, 0, stop_lbl, C['handle'], 0, curses.COLS)
-                stop_pos = (menu_x, menu_x + d_len(stop_lbl))
+                write_at(stdscr, menu_x, 0, stop_lbl, C['handle'])
+                stop_pos = (menu_x, menu_x + len(stop_lbl))
             else:
                 stop_pos = (0, 0)
         else:
-            menu_str = _t('menu_top')
-            write_clipped_raw(stdscr, 0, 0, d_pad(menu_str, curses.COLS), C['handle'], 0, curses.COLS)
+            menu_str = " File  Edit  [RUN ] Menu Editor "
+            write_at(stdscr, 0, 0, menu_str + " " * max(0, curses.COLS - len(menu_str)), C['handle'])
         
         for win in windows:
             if run_mode and win != main_form: continue
@@ -1467,17 +1241,8 @@ def main(stdscr):
         if run_mode and run_focused_ctrl >= 0 and not main_form.hidden and main_form.controls[run_focused_ctrl].tool_type == 13:
             c = main_form.controls[run_focused_ctrl]
             vw, vh = max(1, c.w - (1 if c.v_scroll else 0)), max(1, c.h - (1 if c.h_scroll else 0))
-            
-            lines = c.caption.split('\n')
-            if not lines: lines = [""]
-            cy = min(c.cursor_y, len(lines) - 1)
-            cx = min(c.cursor_x, len(lines[cy]))
-            
-            display_x_offset = d_len(lines[cy][:cx]) - d_len(lines[cy][:c.scroll_x])
-            screen_cx = main_form.x + c.x + display_x_offset
-            screen_cy = main_form.y + c.y + (cy - c.scroll_y)
-            
-            if (0 <= display_x_offset < vw) and (0 <= cy - c.scroll_y < vh):
+            screen_cx, screen_cy = main_form.x + c.x + (c.cursor_x - c.scroll_x), main_form.y + c.y + (c.cursor_y - c.scroll_y)
+            if (0 <= c.cursor_x - c.scroll_x < vw) and (0 <= c.cursor_y - c.scroll_y < vh):
                 if (main_form.y < screen_cy < main_form.y + main_form.h - 1 and main_form.x < screen_cx < main_form.x + main_form.w - 1):
                     try:
                         stdscr.move(screen_cy, screen_cx)
@@ -1563,7 +1328,7 @@ def main(stdscr):
                                         while curr_m:
                                             if curr_m.sub:
                                                 drop_items = [(s.label + " >" if s.sub else s.label) for s in curr_m.sub]
-                                                drop_w = max(15, max([d_len(i) for i in drop_items]) + 2)
+                                                drop_w = max(15, max([len(i) for i in drop_items]) + 2)
                                                 idx = handle_combobox_dropdown(stdscr, curr_x, curr_y, drop_w, drop_items, C)
                                                 if idx is not None:
                                                     curr_m, curr_x, curr_y = curr_m.sub[idx], curr_x + drop_w - 2, curr_y + idx + 1
@@ -1588,7 +1353,7 @@ def main(stdscr):
                                             run_focused_ctrl = idx if c.tool_type in (10, 13) else -1
                                             if right_click:
                                                 if c.tool_type == 13:
-                                                    action = handle_combobox_dropdown(stdscr, mx, my, 15, [_t('ctx_copy'), _t('ctx_paste'), _t('ctx_sel_all')], C)
+                                                    action = handle_combobox_dropdown(stdscr, mx, my, 15, ["Copy", "Paste", "Select All"], C)
                                                     if action == 0: 
                                                         if c.sel_start and c.sel_end:
                                                             sy, sx = c.sel_start
@@ -1631,24 +1396,14 @@ def main(stdscr):
                                                         run_drag_scroll_v = idx
                                                     elif c.h_scroll and click_y == c.h - 1 and click_x < vw:
                                                         lines = c.caption.split('\n')
-                                                        max_len = max([d_len(l) for l in lines] + [0])
+                                                        max_len = max([len(l) for l in lines] + [0])
                                                         if max_len > vw: c.scroll_x = int((click_x / max(1, vw - 1)) * (max_len - vw))
                                                         run_drag_scroll_h = idx
                                                     elif click_x < vw and click_y < vh:
                                                         lines = c.caption.split('\n')
                                                         if not lines: lines = [""]
                                                         c.cursor_y = min(len(lines) - 1, c.scroll_y + click_y)
-                                                        
-                                                        # Click X maps to raw visual display width -> cursor_x maps to actual characters
-                                                        target_disp_x = c.scroll_x + click_x
-                                                        curr_disp = 0
-                                                        c.cursor_x = 0
-                                                        for char in lines[c.cursor_y]:
-                                                            cw = d_len(char)
-                                                            if curr_disp + cw > target_disp_x: break
-                                                            curr_disp += cw
-                                                            c.cursor_x += 1
-                                                            
+                                                        c.cursor_x = min(len(lines[c.cursor_y]), c.scroll_x + click_x)
                                                         c.sel_start, c.sel_end = (c.cursor_y, c.cursor_x), (c.cursor_y, c.cursor_x)
                                                         run_drag_select_text = idx
                                                 elif c.tool_type == 15:
@@ -1729,21 +1484,15 @@ def main(stdscr):
                                 elif selected_ctrl_idx == -1 and selected_win is not None and 5 <= prop_local_y <= prop_win.h - 2: clicked_prop_row = True
                             
                             if not clicked_prop_row: commit_edit()
-                            
-                            mt = _t('menu_top')
-                            mt_file_w = d_len(mt.split('Edit')[0]) if 'Edit' in mt else d_len(mt.split('Editar')[0] if 'Editar' in mt else mt.split('編集')[0])
-                            mt_edit_w = d_len(mt.split('[RUN')[0]) if '[RUN' in mt else d_len(mt.split('[EJECUTAR')[0] if '[EJECUTAR' in mt else mt.split('[実行')[0])
-                            mt_run_w = d_len(mt.split(']')[0]) + 1
-                            mt_menu_w = d_len(mt)
 
-                            if not clicked_handled and 1 <= mx <= mt_file_w and my == 0:
+                            if not clicked_handled and 1 <= mx <= 5 and my == 0:
                                 choice = handle_file_menu(stdscr, C)
                                 if choice == 'save':
                                     if CURRENT_PROJECT_FILE:
                                         try:
                                             with open(CURRENT_PROJECT_FILE, 'w', encoding='utf-8') as f: json.dump(main_form.to_dict(), f, indent=2)
-                                            show_sync_msgbox(stdscr, _t('msg_saved').format(CURRENT_PROJECT_FILE), C)
-                                        except Exception as e: show_sync_msgbox(stdscr, _t('msg_save_err').format(e), C)
+                                            show_sync_msgbox(stdscr, f"Project saved to {CURRENT_PROJECT_FILE}", C)
+                                        except Exception as e: show_sync_msgbox(stdscr, f"Save Error:\n{e}", C)
                                     else:
                                         choice = 'save_as' 
                                 if choice == 'save_as':
@@ -1762,7 +1511,7 @@ def main(stdscr):
                                 stdscr.clear()
                                 clicked_handled = True
                                 
-                            elif not clicked_handled and mt_file_w <= mx <= mt_edit_w and my == 0:
+                            elif not clicked_handled and 7 <= mx <= 11 and my == 0:
                                 choice = handle_edit_menu(stdscr, C)
                                 if choice == 'delete':
                                     if selected_win is not None and selected_ctrl_idx >= 0:
@@ -1772,13 +1521,13 @@ def main(stdscr):
                                 stdscr.clear()
                                 clicked_handled = True
 
-                            elif not clicked_handled and mt_edit_w <= mx <= mt_run_w and my == 0:
+                            elif not clicked_handled and 13 <= mx <= 18 and my == 0:
                                 design_backup, run_mode, run_focused_ctrl = copy.deepcopy(main_form), True, -1
                                 stdscr.clear()
                                 init_run_mode(main_form, run_globals)
                                 clicked_handled = True
 
-                            elif not clicked_handled and mt_run_w <= mx <= mt_menu_w and my == 0:
+                            elif not clicked_handled and 20 <= mx <= 31 and my == 0:
                                 action, item = menu_editor_loop(stdscr, main_form, C)
                                 if action == 'edit_code' and item:
                                     ed_form, bak, tgt = launch_editor_json_for_code(item, main_form, windows, run_globals)
@@ -1823,7 +1572,7 @@ def main(stdscr):
                                                         elif c.tool_type in (2, 10): editing_prop, edit_buffer = 8, ",".join(c.items)
                                                         elif c.tool_type in (8, 15): editing_prop, edit_buffer = 7, str(getattr(c, 'value', 0))
                                                         elif c.tool_type == 3:
-                                                            block_idx, palette = (local_x - 12) // 2, [12, 13, 14, 15, 16, 17]
+                                                            block_idx, palette = (local_x - 9) // 2, [12, 13, 14, 15, 16, 17]
                                                             if 0 <= block_idx < len(palette): c.bg_color = palette[block_idx]
                                                             clicked_prop_row = False
                                                         else: clicked_prop_row = False
@@ -1958,7 +1707,7 @@ def main(stdscr):
                             c = main_form.controls[run_drag_scroll_h]
                             vw = max(1, c.w - (1 if c.v_scroll else 0))
                             lines = c.caption.split('\n')
-                            max_len = max([d_len(l) for l in lines] + [0])
+                            max_len = max([len(l) for l in lines] + [0])
                             if max_len > vw:
                                 cx = max(0, min(vw - 1, mx - (main_form.x + c.x)))
                                 c.scroll_x = max(0, min(max_len - vw, int((cx / max(1, vw - 1)) * (max_len - vw))))
@@ -1992,16 +1741,7 @@ def main(stdscr):
                             lines = c.caption.split('\n')
                             if not lines: lines = [""]
                             c.cursor_y = max(0, min(len(lines) - 1, c.scroll_y + click_y))
-                            
-                            target_disp_x = c.scroll_x + click_x
-                            curr_disp = 0
-                            c.cursor_x = 0
-                            for char in lines[c.cursor_y]:
-                                cw = d_len(char)
-                                if curr_disp + cw > target_disp_x: break
-                                curr_disp += cw
-                                c.cursor_x += 1
-                                
+                            c.cursor_x = max(0, min(len(lines[c.cursor_y]), c.scroll_x + click_x))
                             c.sel_end = (c.cursor_y, c.cursor_x)
                         elif resizing_win is not None and resizing_win.resizable:
                             resizing_win.w = max(10, min(mx - resizing_win.x + 1, curses.COLS - resizing_win.x))
@@ -2166,16 +1906,7 @@ def main(stdscr):
                         if c.cursor_y < c.scroll_y: c.scroll_y = c.cursor_y
                         if c.cursor_y >= c.scroll_y + vh: c.scroll_y = c.cursor_y - vh + 1
                         if c.cursor_x < c.scroll_x: c.scroll_x = c.cursor_x
-                        
-                        str_disp_w_cursor = d_len(lines[c.cursor_y][:c.cursor_x])
-                        str_disp_w_scroll = d_len(lines[c.cursor_y][:c.scroll_x])
-                        
-                        if str_disp_w_cursor < str_disp_w_scroll:
-                            c.scroll_x = c.cursor_x
-                        elif str_disp_w_cursor >= str_disp_w_scroll + vw:
-                            temp_scroll = c.cursor_x
-                            while temp_scroll >= 0 and d_len(lines[c.cursor_y][temp_scroll:c.cursor_x]) < vw: temp_scroll -= 1
-                            c.scroll_x = temp_scroll + 1
+                        if c.cursor_x >= c.scroll_x + vw: c.scroll_x = c.cursor_x - vw + 1
                         
                     elif c.tool_type == 10: 
                         if ch == curses.KEY_UP:
@@ -2208,6 +1939,12 @@ def main(stdscr):
                         else: edit_buffer += chr(ch)
         time.sleep(0.01)
 
+def cli_entry():
+    """Entry point function called by the rad-tui-ide executable command"""
+    try:
+        curses.wrapper(main)
+    finally:
+        print('\033[?1003l', end='', flush=True)
+
 if __name__ == "__main__":
-    try: curses.wrapper(main)
-    finally: print('\033[?1003l', end='', flush=True)
+    cli_entry()

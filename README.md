@@ -96,6 +96,10 @@ pip install rad-tui-ide
 pip install windows-curses
 rad-tui-ide
 
+## 🎯 parameters
+-jp starts the ide in Japanese
+-es starts the ide in Spanish
+-dark-mode starts the ide in dark-mode
 
 ## 🎯 Concept
 
