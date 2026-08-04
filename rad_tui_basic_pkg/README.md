@@ -78,18 +78,25 @@ Download and install Python 3 from the [official Python website](https://www.pyt
 **2. Setup and Run**
 Open PowerShell or Command Prompt and run the following commands:
 ```powershell
-cd %USERPROFILE%
+cd $env:USERPROFILE
 python -m venv rad-tui-ide
 
 # Activate the virtual environment
 # On PowerShell:
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 .\rad-tui-ide\Scripts\Activate.ps1
 # Or on Command Prompt:
 # .\rad-tui-ide\Scripts\activate.bat
 
 # Install and run
 pip install rad-tui-ide
+pip install windows-curses
 rad-tui-ide
+
+## parameters　パラメター parámetros
+-jp 日本語にする
+-es Cambiar a español
+-dark-mode starts the ide in dark-mode
 
 
 ## 🎯 Concept
