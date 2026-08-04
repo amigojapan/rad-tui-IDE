@@ -90,9 +90,6 @@ python -m venv rad-tui-ide
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 .\rad-tui-ide\Scripts\Activate.ps1
 ```
-# Or on Command Prompt:
-# .\rad-tui-ide\Scripts\activate.bat
-
 # Install and run
 ```bash
 pip install rad-tui-ide
