@@ -1,3 +1,4 @@
+[Español](https://github.com/amigojapan/rad-tui-IDE/blob/main/README-es.md) [English](https://github.com/amigojapan/rad-tui-IDE/)
 # RAD-TUI-IDE 🖥️
 
 **Rapid Application Development - ターミナル・ユーザー・インターフェース IDE**

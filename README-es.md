@@ -1,3 +1,5 @@
+[English](https://github.com/amigojapan/rad-tui-IDE/) [日本語](https://github.com/amigojapan/rad-tui-IDE/blob/main/README-jp.md)
+
 # RAD-TUI-IDE 🖥️
 
 **Rapid Application Development - Entorno de Desarrollo Integrado con Interfaz de Usuario de Terminal**
