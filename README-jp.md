@@ -8,7 +8,7 @@ MS-DOS用 Visual Basic 1.0 にインスパイアされた、Linux ターミナ�
 ![Platform](https://img.shields.io/badge/platform-Linux-green.svg)
 ![Language](https://img.shields.io/badge/language-Python%20%7C%20FreeBASIC-orange.svg)
 
-<a href="https://www.youtube.com/watch?v=cOUGTNE0Kso"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_play_button_icon_%282013%E2%80%932017%29.svg" alt="動画を見る" width="100"></a>
+<a href="https://www.youtube.com/watch?v=YmBmVDsr3bo"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_play_button_icon_%282013%E2%80%932017%29.svg" alt="動画を見る" width="100"></a>
 
 ![screenshot](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/latestRAD-TUI-IDEscreenshot.png)
 
@@ -82,9 +82,11 @@ python -m venv rad-tui-ide
 # 仮想環境をアクティブにする
 # PowerShell の場合:
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-.ad-tui-ide\Scripts\Activate.ps1
+.
+ad-tui-ide\Scripts\Activate.ps1
 # または コマンドプロンプト の場合:
-# .ad-tui-ide\Scriptsctivate.bat
+# .
+ad-tui-ide\Scriptsctivate.bat
 
 # インストールと実行
 pip install rad-tui-ide

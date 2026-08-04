@@ -8,7 +8,7 @@ Un IDE visual inspirado en Visual Basic 1.0 para MS-DOS que funciona en la termi
 ![Platform](https://img.shields.io/badge/platform-Linux-green.svg)
 ![Language](https://img.shields.io/badge/language-Python%20%7C%20FreeBASIC-orange.svg)
 
-<a href="https://www.youtube.com/watch?v=cOUGTNE0Kso"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_play_button_icon_%282013%E2%80%932017%29.svg" alt="Ver el vídeo" width="100"></a>
+<a href="https://www.youtube.com/watch?v=Vh_pqqD16a4"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_play_button_icon_%282013%E2%80%932017%29.svg" alt="Ver el vídeo" width="100"></a>
 
 ![screenshot](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/latestRAD-TUI-IDEscreenshot.png)
 
@@ -82,9 +82,11 @@ python -m venv rad-tui-ide
 # Activar el entorno virtual
 # En PowerShell:
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-.ad-tui-ide\Scripts\Activate.ps1
+.
+ad-tui-ide\Scripts\Activate.ps1
 # O en el Símbolo del sistema:
-# .ad-tui-ide\Scriptsctivate.bat
+# .
+ad-tui-ide\Scriptsctivate.bat
 
 # Instalar y ejecutar
 pip install rad-tui-ide
