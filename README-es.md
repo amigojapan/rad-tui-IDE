@@ -99,6 +99,10 @@ rad-tui-ide
 -es Cambiar a español 
 -dark-mode starts the ide in dark-mode
 
+## comunidad
+entra a nuesta comunidad en IRC en irc.libera.chat en el canal  #VoxAssist
+haz click href=https://libera.chat/>en este enlace</a> para entrar por web y entra a el canal #voxAssist
+
 ## 🎯 Concepto
 
 RAD-TUI-IDE recrea la magia de los primeros entornos de programación visual de los años 90 como VB1 para MS-DOS, pero para las terminales de Linux modernas. Proporciona:

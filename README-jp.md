@@ -99,6 +99,10 @@ rad-tui-ide
 -es Cambiar a español 
 -dark-mode starts the ide in dark-mode
 
+## 集まり場
+IRCでirc.libera.chat #VoxAssistチャネルで
+リベラチャットは<a href=https://libera.chat/>このリンクで</a>入って#voxAssistチャネルに入ってください。
+
 ## 🎯 コンセプト
 
 RAD-TUI-IDE は、MS-DOS用のVB1のような90年代初頭のビジュアルプログラミング環境の魔法を、現代のLinuxターミナルのために再現したものです。以下の機能を提供します:
