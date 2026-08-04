@@ -86,20 +86,27 @@ python -m venv rad-tui-ide
 
 # Activate the virtual environment
 # On PowerShell:
+```powershell
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 .\rad-tui-ide\Scripts\Activate.ps1
+```
 # Or on Command Prompt:
 # .\rad-tui-ide\Scripts\activate.bat
 
 # Install and run
+```bash
 pip install rad-tui-ide
 pip install windows-curses
 rad-tui-ide
+```
+## parameters　パラメーター parámetros
 
-## parameters　パラメター parámetros
 -jp 日本語にする
+
 -es Cambiar a español
+
 -dark-mode starts the ide in dark-mode
+
 
 ## community
 join or comunity on IRC on irc.libera.chat in channel #VoxAssist
