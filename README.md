@@ -98,8 +98,12 @@ rad-tui-ide
 
 ## parameters　パラメター parámetros
 -jp 日本語にする
--es Cambiar a español 
+-es Cambiar a español
 -dark-mode starts the ide in dark-mode
+
+## comunity
+join or comunity on IRC on irc.libera.chat in hcannel #VoxAssist
+click this link ot join thru teh web https://libera.chat/   and join the #voxAssist channel
 
 ## 🎯 Concept
 
