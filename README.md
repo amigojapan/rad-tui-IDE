@@ -103,7 +103,7 @@ rad-tui-ide
 
 ## community
 join or comunity on IRC on irc.libera.chat in channel #VoxAssist
-click <a href=https://libera.chat/>this link</a> to join thru the web  and join the #voxAssist channel
+click[this link](https://libera.chat/) to join thru the web  and join the #voxAssist channel
 
 ## 🎯 Concept
 

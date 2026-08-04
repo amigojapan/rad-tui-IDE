@@ -101,7 +101,7 @@ rad-tui-ide
 
 ## comunidad
 entra a nuesta comunidad en IRC en irc.libera.chat en el canal  #VoxAssist
-haz click href=https://libera.chat/>en este enlace</a> para entrar por web y entra a el canal #voxAssist
+haz click [este enlace](https://libera.chat/) para entrar por web y entra a el canal #voxAssist
 
 ## 🎯 Concepto
 
