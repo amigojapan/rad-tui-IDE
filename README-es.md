@@ -99,9 +99,9 @@ rad-tui-ide
 -es Cambiar a español 
 -dark-mode starts the ide in dark-mode
 
-## comunidad
-entra a nuesta comunidad en IRC en irc.libera.chat en el canal  #VoxAssist
-haz click [este enlace](https://web.libera.chat/) para entrar por web y entra a el canal #voxAssist
+## Comunidad
+Únase a nuestra comunidad en IRC en irc.libera.chat en el canal #VoxAssist.
+Haga clic en [este enlace](https://web.libera.chat/) para unirse a través de la web y entrar al canal #voxAssist.
 
 ## 🎯 Concepto
 
