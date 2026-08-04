@@ -101,7 +101,7 @@ rad-tui-ide
 
 ## 集まり場
 IRCでirc.libera.chat #VoxAssistチャネルで
-リベラチャットは<a href=https://libera.chat/>このリンクで</a>入って#voxAssistチャネルに入ってください。
+リベラチャットは[このリンクで](https://web.libera.chat/)入って#voxAssistチャネルに入ってください。
 
 ## 🎯 コンセプト
 
