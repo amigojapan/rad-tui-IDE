@@ -23,7 +23,7 @@ A Visual Basic 1.0 for MS-DOS inspired visual IDE that runs on Linux. Design for
 
 ## Installation & Usage Guide
 
-### Linux (Debian / Ubuntu / Linux Mint)
+## Linux (Debian / Ubuntu / Linux Mint)
 
 **1. Install Python and venv**
 Ensure your system repositories are up to date and install Python 3 along with the `venv` module:
@@ -44,7 +44,7 @@ rad-tui-ide
 *(Note: For Arch, Fedora, or other distributions, use your respective package manager like `pacman` or `dnf` to install Python 3.)*
 
 
-### macOS
+## macOS
 
 **1. Install Homebrew**
 Run the following command in your terminal to install Homebrew (if you haven't already):
@@ -70,7 +70,7 @@ rad-tui-ide
 ```
 
 
-### Windows
+## Windows
 
 **1. Install Python**
 Download and install Python 3 from the [official Python website](https://www.python.org/downloads/) or via the Microsoft Store. **Make sure to check the box that says "Add Python to PATH"** during installation.
@@ -92,12 +92,17 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 pip install rad-tui-ide
 pip install windows-curses
 rad-tui-ide
+```
 
-## parameters　パラメター parámetros
--jp 日本語にする
--es Cambiar a español
+## parameters　パラメーター parámetros
+
+-run scriptname.json
+
 -dark-mode starts the ide in dark-mode
 
+-jp 日本語にする
+
+-es Cambiar a español
 
 ## 🎯 Concept
 

@@ -96,9 +96,13 @@ rad-tui-ide
 ```
 
 ## parameters　パラメター parámetros
+-run scriptname.json
+
+-dark-mode ダークモード
+
 -jp 日本語にする
--es Cambiar a español 
--dark-mode starts the ide in dark-mode
+
+-es Cambiar a español
 
 ## 集まり場
 IRCでirc.libera.chat #VoxAssistチャネルで

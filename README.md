@@ -100,11 +100,14 @@ rad-tui-ide
 ```
 ## parameters　パラメーター parámetros
 
+-run scriptname.json
+
+-dark-mode starts the ide in dark-mode
+
 -jp 日本語にする
 
 -es Cambiar a español
 
--dark-mode starts the ide in dark-mode
 
 
 ## community
