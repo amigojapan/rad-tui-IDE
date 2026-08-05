@@ -11,7 +11,7 @@ MS-DOS用 Visual Basic 1.0 にインスパイアされた、Linux ターミナ�
 
 <a href="https://www.youtube.com/watch?v=YmBmVDsr3bo"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_play_button_icon_%282013%E2%80%932017%29.svg" alt="動画を見る" width="100"></a>
 
-![screenshot](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/latestRAD-TUI-IDEscreenshot.png)
+![screenshot](https://raw.githubusercontent.com/amigojapan/JPLY/refs/heads/main/img/rad-tui-ideJP.png)
 
 ## プロジェクト例:
 ![tsukinoeditor](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/tsukinoeditor.png)
@@ -95,7 +95,7 @@ pip install windows-curses
 rad-tui-ide
 ```
 
-## parameters　パラメター parámetros
+## パラメター
 -run scriptname.json
 
 -dark-mode ダークモード

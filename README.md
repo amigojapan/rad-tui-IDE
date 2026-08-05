@@ -98,7 +98,7 @@ pip install rad-tui-ide
 pip install windows-curses
 rad-tui-ide
 ```
-## parameters　パラメーター parámetros
+## parameters
 
 -run scriptname.json
 
