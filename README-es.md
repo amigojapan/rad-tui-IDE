@@ -12,7 +12,7 @@ Un IDE visual inspirado en Visual Basic 1.0 para MS-DOS que funciona en la termi
 
 <a href="https://www.youtube.com/watch?v=Vh_pqqD16a4"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_play_button_icon_%282013%E2%80%932017%29.svg" alt="Ver el vídeo" width="100"></a>
 
-![screenshot](https://raw.githubusercontent.com/amigojapan/JPLY/refs/heads/main/img/rad-tui-ideESssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss.png)
+![screenshot](https://raw.githubusercontent.com/amigojapan/JPLY/refs/heads/main/img/rad-tui-ideES.png)
 
 ## Proyectos de ejemplo:
 ![tsukinoeditor](https://raw.githubusercontent.com/amigojapan/rad-tui-IDE/refs/heads/main/tsukinoeditor.png)
