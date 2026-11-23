@@ -219,6 +219,52 @@ def _t(key):
 def d_len(s):
     return sum(2 if unicodedata.east_asian_width(c) in 'WF' else 1 for c in str(s))
 
+
+def is_alt_space_escape_sequence(sequence):
+    """Recognize Alt+Space from legacy, CSI-u and xterm terminals."""
+    if sequence == ' ':
+        return True
+    match = re.fullmatch(r'\[32;(\d+)(?::1)?u', sequence)
+    if match:
+        return int(match.group(1)) in (3, 4)
+    match = re.fullmatch(r'\[27;(\d+);32~', sequence)
+    if match:
+        return int(match.group(1)) in (3, 4)
+    return False
+
+
+def is_alt_space_repeat_or_release(sequence):
+    match = re.fullmatch(r'\[32;(\d+):[23]u', sequence)
+    return bool(match and int(match.group(1)) in (3, 4))
+
+
+def consume_alt_space_escape(stdscr):
+    """Return True for press, None for release/repeat, False for other keys."""
+    pending = []
+    try:
+        stdscr.timeout(30)
+        first = stdscr.get_wch()
+        pending.append(first)
+        if first == '[':
+            for _ in range(18):
+                part = stdscr.get_wch()
+                pending.append(part)
+                if isinstance(part, str) and len(part) == 1 and '@' <= part <= '~':
+                    break
+    except curses.error:
+        pass
+    finally:
+        stdscr.nodelay(True)
+    sequence = ''.join(part for part in pending if isinstance(part, str))
+    if is_alt_space_escape_sequence(sequence):
+        return True
+    if is_alt_space_repeat_or_release(sequence):
+        return None
+    for part in reversed(pending):
+        if isinstance(part, str): curses.unget_wch(part)
+        else: curses.ungetch(part)
+    return False
+
 def d_pad(s, width, fill=" "):
     s = str(s)
     curr_w = 0
@@ -532,6 +578,10 @@ class Window:
                                 for _ in range(len(text_chunk)):
                                     if idx < len(char_attrs): char_attrs[idx] = attr
                                     idx += 1
+                        cell_attrs = getattr(c, 'cell_attrs', None)
+                        if cell_attrs is not None and actual_y < len(cell_attrs):
+                            for idx, attr in enumerate(cell_attrs[actual_y][:len(char_attrs)]):
+                                char_attrs[idx] = attr
                                     
                         curr_x, str_disp_w = draw_x, 0
                         for col, char in enumerate(line_text):
@@ -1125,7 +1175,7 @@ def main(stdscr):
     stdscr.nodelay(True)
     curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
     curses.mouseinterval(0) 
-    print('\033[?1003h', end='', flush=True) 
+    print('\033[?1002h\033[?1006h', end='', flush=True)
 
     for i, (fg, bg) in enumerate([
         (curses.COLOR_WHITE, curses.COLOR_BLUE), (curses.COLOR_BLACK, curses.COLOR_WHITE),
@@ -1192,6 +1242,8 @@ def main(stdscr):
     
     run_focused_ctrl = run_pressed_ctrl = run_drag_scroll_v = run_drag_scroll_h = run_drag_select_text = -1 
     run_drag_sys_vscroll = run_drag_sys_hscroll = -1
+    run_mouse_capture_idx = -1
+    run_mouse_capture_button = 0
     design_backup = queued_form_to_load = None
 
     def trigger_load_form(fname): nonlocal queued_form_to_load; queued_form_to_load = fname
@@ -1356,6 +1408,9 @@ def main(stdscr):
     stdscr.clear()
 
     while True:
+        if not run_mode:
+            run_mouse_capture_idx = -1
+            run_mouse_capture_button = 0
         box_w, box_h = max(50, curses.COLS - 10), max(15, curses.LINES - 6)
         box_x, box_y = (curses.COLS - box_w) // 2, (curses.LINES - box_h) // 2
 
@@ -1543,19 +1598,90 @@ def main(stdscr):
             ch = -1
             char_str = ""
 
+        if ch == 27 and run_mode and run_globals.get('capture_physical_keys'):
+            alt_space_event = consume_alt_space_escape(stdscr)
+            if alt_space_event is None:
+                continue
+            if alt_space_event:
+                ch, char_str = 32, '\x1b '
+
         if ch == curses.KEY_MOUSE:
             try:
                 _, mx, my, _, bstate = curses.getmouse()
                 mouse_moved = (mx != old_mx or my != old_my)
                 left_click = bool(bstate & curses.BUTTON1_PRESSED) or bool(bstate & curses.BUTTON1_CLICKED)
                 right_click = bool(bstate & curses.BUTTON3_PRESSED) or bool(bstate & curses.BUTTON3_CLICKED)
-                mouse_released = bool(bstate & curses.BUTTON1_RELEASED) or bool(bstate & curses.BUTTON3_RELEASED)
+                middle_pressed = bool(bstate & getattr(curses, 'BUTTON2_PRESSED', 0))
+                middle_clicked = bool(bstate & getattr(curses, 'BUTTON2_CLICKED', 0))
+                middle_released = bool(bstate & getattr(curses, 'BUTTON2_RELEASED', 0))
+                mouse_released = bool(bstate & (curses.BUTTON1_RELEASED | curses.BUTTON3_RELEASED)) or middle_released
                 
                 scroll_up = scroll_down = False
                 if hasattr(curses, 'BUTTON4_PRESSED') and (bstate & curses.BUTTON4_PRESSED): scroll_up = True
                 elif hasattr(curses, 'BUTTON5_PRESSED') and (bstate & curses.BUTTON5_PRESSED): scroll_down = True
                 elif bstate & 0x10000: scroll_up = True
                 elif bstate & 0x200000: scroll_down = True
+
+                mouse_phase = None
+                mouse_button = 0
+                if scroll_up or scroll_down:
+                    mouse_phase, mouse_button = 'wheel', 4 if scroll_up else 5
+                elif run_mouse_capture_idx >= 0 and mouse_released:
+                    mouse_phase = 'release'
+                    mouse_button = run_mouse_capture_button
+                elif run_mouse_capture_idx >= 0 and mouse_moved:
+                    mouse_phase, mouse_button = 'drag', run_mouse_capture_button
+                elif bstate & (curses.BUTTON1_CLICKED | curses.BUTTON3_CLICKED) or middle_clicked:
+                    mouse_phase = 'click'
+                    mouse_button = 3 if bstate & curses.BUTTON3_CLICKED else (2 if middle_clicked else 1)
+                elif left_click or right_click or middle_pressed:
+                    mouse_phase = 'press'
+                    mouse_button = 3 if right_click else (2 if middle_pressed else 1)
+                elif mouse_released:
+                    mouse_phase = 'release'
+                    mouse_button = 3 if bstate & curses.BUTTON3_RELEASED else (2 if middle_released else 1)
+                elif bstate & curses.REPORT_MOUSE_POSITION:
+                    mouse_phase = 'move'
+
+                if run_mode and mouse_phase and not main_form.hidden:
+                    idx = run_mouse_capture_idx
+                    if idx < 0 and main_form.hit_test(mx, my):
+                        idx = main_form.hit_control(mx - main_form.x, my - main_form.y)
+                    if idx >= 0:
+                        c = main_form.controls[idx]
+                        handler = run_globals.get(f'on_mouse_{c.name_id}')
+                        if handler:
+                            local_x = mx - main_form.x - c.x
+                            local_y = my - main_form.y - c.y
+                            try:
+                                consumed = bool(handler(local_x, local_y, mouse_phase, mouse_button))
+                            except Exception as e:
+                                run_globals['__msg__'] = f"Runtime Error:\n{e}"
+                                consumed = False
+                            if consumed:
+                                if mouse_phase == 'press':
+                                    run_mouse_capture_idx, run_mouse_capture_button, mouse_down = idx, mouse_button, True
+                                elif mouse_phase in ('release', 'click'):
+                                    run_mouse_capture_idx, run_mouse_capture_button, mouse_down = -1, 0, False
+                                old_mx, old_my = mx, my
+                                continue
+                if mouse_released:
+                    run_mouse_capture_idx, run_mouse_capture_button = -1, 0
+
+                if run_mode and bstate & curses.BUTTON1_CLICKED and not main_form.hidden:
+                    if main_form.hit_test(mx, my):
+                        clicked_idx = main_form.hit_control(mx - main_form.x, my - main_form.y)
+                        if clicked_idx >= 0:
+                            clicked_ctrl = main_form.controls[clicked_idx]
+                            if clicked_ctrl.tool_type == 3:
+                                handler = run_globals.get(f'on_click_{clicked_ctrl.name_id}')
+                                if handler:
+                                    try: handler()
+                                    except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
+                                mouse_down = False
+                                run_pressed_ctrl = -1
+                                old_mx, old_my = mx, my
+                                continue
 
                 if scroll_up or scroll_down:
                     hit_win = None
@@ -2084,11 +2210,45 @@ def main(stdscr):
                             tools.x, tools.y = max(0, min(mx - drag_offset_x, curses.COLS - tools.w)), max(1, min(my - drag_offset_y, curses.LINES - tools.h))
                         elif dragged_win is not None:
                             dragged_win.x, dragged_win.y = mx - drag_offset_x, my - drag_offset_y
+                if bstate & (curses.BUTTON1_CLICKED | curses.BUTTON3_CLICKED):
+                    mouse_down = False
+                    run_pressed_ctrl = run_drag_select_text = -1
                 old_mx, old_my = mx, my
             except curses.error: pass
 
-        elif ch == 27: break
+        elif ch == 27:
+            if run_mode and run_globals.get('capture_physical_keys'):
+                key_handler = run_globals.get('on_form_key')
+                if key_handler:
+                    try:
+                        if key_handler(ch, char_str): continue
+                    except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
+            break
         elif ch != -1:
+            if run_mode:
+                focused = main_form.controls[run_focused_ctrl] if run_focused_ctrl >= 0 else None
+                if (run_globals.get('capture_physical_keys') or focused is None or
+                        (focused.tool_type == 13 and not focused.editable)):
+                    key_handler = run_globals.get('on_form_key')
+                    if key_handler:
+                        try: key_handled = bool(key_handler(ch, char_str))
+                        except Exception as e:
+                            run_globals['__msg__'] = f"Runtime Error:\n{e}"
+                            key_handled = False
+                        if key_handled:
+                            continue
+            if run_mode and ch in (10, 13, curses.KEY_ENTER):
+                enter_handler = None
+                if run_focused_ctrl < 0:
+                    enter_handler = run_globals.get('on_form_enter')
+                else:
+                    focused = main_form.controls[run_focused_ctrl]
+                    if focused.tool_type == 13 and (focused.h == 1 or not focused.editable):
+                        enter_handler = run_globals.get(f'on_enter_{focused.name_id}')
+                if enter_handler:
+                    try: enter_handler()
+                    except Exception as e: run_globals['__msg__'] = f"Runtime Error:\n{e}"
+                    continue
             if run_mode:
                 if run_focused_ctrl >= 0:
                     c = main_form.controls[run_focused_ctrl]
@@ -2264,4 +2424,4 @@ if __name__ == "__main__":
     import locale
     locale.setlocale(locale.LC_ALL, '')
     try: curses.wrapper(main)
-    finally: print('\033[?1003l', end='', flush=True)
+    finally: print('\033[?1002l\033[?1006l', end='', flush=True)
