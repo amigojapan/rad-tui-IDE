@@ -1,0 +1,9 @@
+hardware 
+please check out my TUI-OS for extremely low cost Linux PDA kind of devices, https://cdn.lurker.chat/SHB7Dk2CBvl1.webp , it should run on this device I think https://www.waveshare.com/product/esp32-related/boards-kits/esp32-s31/esp32-s31-touch-lcd-4.3c.htm
+
+porfavor checate el sistema operativo para sistemas TUI que hice  para sistemas de extremo bajo costo de linux https://cdn.lurker.chat/SHB7Dk2CBvl1.webp , quiro que corra en este hardware de mas o moenos 55 dolares mas envio https://www.waveshare.com/product/esp32-related/boards-kits/esp32-s31/esp32-s31-touch-lcd-4.3c.htm
+
+ I am thinking of making seperate devices with theri own microcontrolelrs in them for making calls and takign pictures, they coudl even be wireless if wanted,a dn wifi hotspot
+
+instead of browser, use sanbox to download, run and delete a binary
+bwrap --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 --proc /proc --dev /dev --tmpfs /tmp --unshare-all ./your-binary

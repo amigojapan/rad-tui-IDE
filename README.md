@@ -141,7 +141,7 @@ RAD-TUI-IDE recreates the magic of early 90s visual programming environments lik
 
 ### Project Management
 - 💾 **Save/Load projects** - JSON-based project files
-- 📁 **File menu** - Standard save/load/exit operations
+- 📁 **File menu** - Save, load, export to C++, and exit
 - 🔄 **Design/Runtime toggle** - Switch between design-time and run-time modes
 
 ## 🎮 How to Run
@@ -153,6 +153,27 @@ rad-tui-ide
 rad-tui-ide -dark-mode
 
 rad-tui-ide -run scriptname.json
+
+
+### Export a project to C++
+
+Choose **File → Export to C++...** and select a `.cpp` filename. The generated file is a native C++17 ncurses program with the form, controls, menus, and basic control interaction. It requires no Python at runtime. Compile it with:
+
+```bash
+g++ -std=c++17 -O2 projects/MyForm.cpp -lncursesw -o MyForm
+./MyForm
+```
+
+The exporter supports UI-only projects, a defined callback subset, and the bundled `projects/phone_shell.json` implementation. Supported callbacks are no-argument functions with control-property assignments, integer and string expressions, simple conditions, calls to other supported callbacks, `msgbox`, and `END`. The phone shell uses a native C++ PTY, terminal screen, and Japanese input runtime. If source uses an unsupported Python statement, export reports its location and leaves the `.cpp` file untouched. The native phone runtime is tied to the bundled phone shell callback version; editing that Python code requires an updated native port.
+
+The native event loop calls supported form, click, change, enter, timer, resize, right-click, and button press/release handlers. Handlers that need Python's raw key or mouse objects are rejected with a source location.
+
+The repository also includes a ready export of the phone shell:
+
+```bash
+g++ -std=c++17 -O2 projects/phone_shell.cpp -lncursesw -o phone_shell
+./phone_shell
+```
 
 
 ## 🕹️ User Guide

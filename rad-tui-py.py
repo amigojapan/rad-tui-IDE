@@ -8,6 +8,7 @@ import sys
 import argparse
 import os
 import unicodedata
+from rad_tui_basic_pkg.src.rad_tui_basic.cpp_export import export_cpp, validate_cpp_export
 
 # ==========================================================
 # VB1-DOS Clone: Python curses IDE (Internationalization & IME)
@@ -48,10 +49,12 @@ I18N = {
         'prop_bg': 'BGColor:',
         'menu_top': ' File  Edit  [RUN ] Menu Editor ',
         'menu_top_run': ' [STOP] ',
-        'menu_file': [" Save Project       ", " Save Project As... ", " Load Project...    ", " Exit IDE           "],
+        'menu_file': [" Save Project       ", " Save Project As... ", " Load Project...    ", " Export to C++...   ", " Exit IDE           "],
         'menu_edit': [" Delete Selected Control "],
         'msg_saved': 'Project saved to {}',
         'msg_loaded': 'Project loaded from {}',
+        'msg_exported': 'C++ source exported to {}',
+        'msg_export_err': 'C++ export failed:\n{}',
         'msg_save_err': 'Save Error:\n{}',
         'msg_load_err': 'Load Error:\n{}',
         'msg_sel_file': 'Please select a file.',
@@ -113,10 +116,12 @@ I18N = {
         'prop_bg': 'Color F:',
         'menu_top': ' Archivo  Editar  [EJECUTAR ] Editor de Menus ',
         'menu_top_run': ' [DETENER] ',
-        'menu_file': [" Guardar Proyecto       ", " Guardar Proyecto Como... ", " Cargar Proyecto...    ", " Salir del IDE           "],
+        'menu_file': [" Guardar Proyecto       ", " Guardar Proyecto Como... ", " Cargar Proyecto...    ", " Exportar a C++...       ", " Salir del IDE           "],
         'menu_edit': [" Borrar Control Seleccionado "],
         'msg_saved': 'Proyecto guardado en {}',
         'msg_loaded': 'Proyecto cargado desde {}',
+        'msg_exported': 'Código C++ exportado a {}',
+        'msg_export_err': 'Error al exportar C++:\n{}',
         'msg_save_err': 'Error de guardado:\n{}',
         'msg_load_err': 'Error de carga:\n{}',
         'msg_sel_file': 'Por favor seleccione un archivo.',
@@ -178,10 +183,12 @@ I18N = {
         'prop_bg': '背景色:',
         'menu_top': ' ファイル  編集  [実行 ] メニューエディタ ',
         'menu_top_run': ' [停止] ',
-        'menu_file': [" プロジェクト保存   ", " 名前を付けて保存... ", " プロジェクト開く...  ", " IDEを終了する      "],
+        'menu_file': [" プロジェクト保存   ", " 名前を付けて保存... ", " プロジェクト開く...  ", " C++にエクスポート... ", " IDEを終了する      "],
         'menu_edit': [" 選択したコントロールを削除 "],
         'msg_saved': '{} に保存しました',
         'msg_loaded': '{} から読込ました',
+        'msg_exported': 'C++ソースを {} に保存しました',
+        'msg_export_err': 'C++エクスポートエラー:\n{}',
         'msg_save_err': '保存エラー:\n{}',
         'msg_load_err': '読込エラー:\n{}',
         'msg_sel_file': 'ファイルを選択してください。',
@@ -511,10 +518,24 @@ class Window:
                 is_pressed = (i == pressed_ctrl)
                 TOP_C = C_BTN_FACE if is_pressed else C_BTN_HL
                 BOT_C = C_BTN_HL if is_pressed else C_BTN_FACE
-                actual_h = max(3, c.h)
+                actual_h = max(1, c.h)
+                base_color = curses.color_pair(c.bg_color)
+                if actual_h < 3 or c.w < 3:
+                    for r in range(actual_h):
+                        if r == actual_h // 2:
+                            if c.w >= 3:
+                                pad = max(0, (c.w - 2 - d_len(c.caption)) // 2)
+                                write_clipped(draw_x, draw_y + r, "│", TOP_C)
+                                write_clipped(draw_x + 1, draw_y + r,
+                                              d_pad(" " * pad + c.caption, c.w - 2), base_color)
+                                write_clipped(draw_x + c.w - 1, draw_y + r, "│", BOT_C)
+                            else:
+                                write_clipped(draw_x, draw_y + r, d_pad(c.caption, c.w), base_color)
+                        else:
+                            write_clipped(draw_x, draw_y + r, " " * c.w, base_color)
+                    continue
                 write_clipped(draw_x, draw_y, "┌" + "─" * (c.w - 2), TOP_C)
                 write_clipped(draw_x + c.w - 1, draw_y, "┐", BOT_C)
-                base_color = curses.color_pair(c.bg_color)
                 
                 for r in range(1, actual_h - 1):
                     write_clipped(draw_x, draw_y + r, "│", TOP_C)
@@ -951,7 +972,8 @@ def handle_file_menu(stdscr, colors):
                         if idx == 0: return 'save'
                         if idx == 1: return 'save_as'
                         if idx == 2: return 'load'
-                        if idx == 3: return 'exit'
+                        if idx == 3: return 'export_cpp'
+                        if idx == 4: return 'exit'
                     return None
             except curses.error: pass
         elif ch == 27: return None
@@ -1170,6 +1192,7 @@ def main(stdscr):
     
     sys._is_standalone_run = bool(args.run)
 
+    setattr(sys, '_rad_launch_dir', os.getcwd())
     setattr(sys, '_ide_dir', os.getcwd())
     curses.curs_set(0)
     stdscr.nodelay(True)
@@ -1328,7 +1351,12 @@ def main(stdscr):
                 elif ctrl.name_id == 'btn_cancel':
                     ctrl.code = "def on_click_btn_cancel():\n    import sys\n    sys._exit_file_dialogue = True\n"
             
-            proj_dir = os.path.join(ide_dir, 'projects')
+            if mode == 'export_cpp':
+                proj_dir = (os.path.dirname(os.path.abspath(CURRENT_PROJECT_FILE))
+                            if CURRENT_PROJECT_FILE else
+                            os.path.join(getattr(sys, '_rad_launch_dir', os.getcwd()), 'projects'))
+            else:
+                proj_dir = os.path.join(ide_dir, 'projects')
             if not os.path.exists(proj_dir): os.makedirs(proj_dir)
             os.chdir(proj_dir)
             
@@ -1342,6 +1370,13 @@ def main(stdscr):
             setattr(sys, '_ide_dialogue_result', None)
             
             init_run_mode(fd_form, glb_dict)
+            if mode == 'export_cpp':
+                fd_form.title = 'Export to C++...'
+                glb_dict['btn_ok'].caption = 'Export'
+                base_name = (os.path.splitext(os.path.basename(CURRENT_PROJECT_FILE))[0]
+                             if CURRENT_PROJECT_FILE else form_ref.name_id or 'project')
+                glb_dict['txt_filename'].caption = base_name + '.cpp'
+                glb_dict['txt_filename'].cursor_x = len(glb_dict['txt_filename'].caption)
             return fd_form, backup, None
         except Exception as e:
             return None, None, e
@@ -1464,6 +1499,11 @@ def main(stdscr):
                             CURRENT_PROJECT_FILE = filepath
                             show_sync_msgbox(stdscr, _t('msg_saved').format(filepath), C)
                         except Exception as e: show_sync_msgbox(stdscr, _t('msg_save_err').format(e), C)
+                    elif mode == 'export_cpp':
+                        try:
+                            output_path = export_cpp(main_form.to_dict(), filepath)
+                            show_sync_msgbox(stdscr, _t('msg_exported').format(output_path), C)
+                        except Exception as e: show_sync_msgbox(stdscr, _t('msg_export_err').format(e), C)
                     elif mode == 'load':
                         if not filepath.endswith('.json'): filepath += '.json'
                         try:
@@ -1936,6 +1976,16 @@ def main(stdscr):
                                         main_form, design_backup = fd_form, bak
                                         run_mode, run_focused_ctrl = True, -1
                                     else: show_sync_msgbox(stdscr, f"Could not load filedialogue.json:\n{err}", C)
+                                elif choice == 'export_cpp':
+                                    try:
+                                        validate_cpp_export(main_form.to_dict())
+                                        fd_form, bak, err = launch_filedialogue_for_ide('export_cpp', main_form, windows, run_globals)
+                                        if fd_form:
+                                            main_form, design_backup = fd_form, bak
+                                            run_mode, run_focused_ctrl = True, -1
+                                        else: show_sync_msgbox(stdscr, f"Could not load filedialogue.json:\n{err}", C)
+                                    except Exception as e:
+                                        show_sync_msgbox(stdscr, _t('msg_export_err').format(e), C)
                                 elif choice == 'exit': return 
                                 stdscr.clear()
                                 clicked_handled = True

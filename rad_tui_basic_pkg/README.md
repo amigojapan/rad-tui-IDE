@@ -145,6 +145,20 @@ rad-tui-ide -dark-mode
 rad-tui-ide -run scriptname.json
 
 
+### Export a project to C++
+
+Choose **File → Export to C++...** and select a `.cpp` filename. The generated file is a native C++17 ncurses program with the form, controls, menus, and basic control interaction. It requires no Python at runtime. Compile it with:
+
+```bash
+g++ -std=c++17 -O2 projects/MyForm.cpp -lncursesw -o MyForm
+./MyForm
+```
+
+The exporter supports UI-only projects, a defined callback subset, and the repository's `projects/phone_shell.json` implementation. Supported callbacks are no-argument functions with control-property assignments, integer and string expressions, simple conditions, calls to other supported callbacks, `msgbox`, and `END`. The phone shell uses a native C++ PTY, terminal screen, and Japanese input runtime. If source uses an unsupported Python statement, export reports its location and leaves the `.cpp` file untouched. The native phone runtime is tied to the repository's phone shell callback version; editing that Python code requires an updated native port.
+
+The native event loop calls supported form, click, change, enter, timer, resize, right-click, and button press/release handlers. Handlers that need Python's raw key or mouse objects are rejected with a source location.
+
+
 ## 🕹️ User Guide
 
 ### Getting Started
