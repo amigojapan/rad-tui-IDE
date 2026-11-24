@@ -26,8 +26,9 @@ struct Menu { std::string label, name; std::vector<Menu> sub; };
 struct MenuRegion { int x, y, w, depth; const std::vector<Menu>* items; };
 
 static int form_x = 0, form_y = 1;
-static int form_w = 33, form_h = 100;
+static int form_w = 33, form_h = 97;
 static int form_fg = -1, form_bg = -1;
+static bool form_display_border_and_caption = false;
 static std::string form_title = "\x50\x68\x6f\x6e\x65\x20\x53\x68\x65\x6c\x6c";
 static std::vector<Control> controls = {
     {1, 1, 31, 76, 13, "\x53\x74\x61\x72\x74\x69\x6e\x67\x20\x73\x68\x65\x6c\x6c\x2e\x2e\x2e", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, false, false, true, {}},
@@ -71,18 +72,20 @@ static std::vector<Control> controls = {
     {19, 90, 4, 3, 3, "\x62", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
     {23, 90, 4, 3, 3, "\x6e", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
     {27, 90, 4, 3, 3, "\x6d", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
-    {1, 93, 8, 3, 3, "\x2d", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
-    {9, 93, 8, 3, 3, "\x2f", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
-    {17, 93, 7, 3, 3, "\x2e", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
-    {24, 93, 7, 3, 3, "\x3d", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
-    {1, 96, 5, 3, 3, "\x53\x70", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
-    {6, 96, 5, 3, 3, "\x42\x6b", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
-    {11, 96, 5, 3, 3, "\x45\x6e\x74", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
-    {16, 96, 5, 3, 3, "\x54\x61\x62", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
-    {21, 96, 5, 3, 3, "\x45\x73\x63", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
-    {26, 96, 5, 3, 3, "\x5e\x43", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}}
+    {-50, 93, 8, 3, 3, "", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
+    {-50, 93, 8, 3, 3, "", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
+    {-50, 93, 7, 3, 3, "", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
+    {-50, 93, 7, 3, 3, "", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
+    {-50, 93, 1, 3, 3, "", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
+    {-50, 93, 1, 3, 3, "", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
+    {1, 93, 5, 3, 3, "\x53\x70", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
+    {6, 93, 5, 3, 3, "\x42\x6b", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
+    {11, 93, 5, 3, 3, "\x45\x6e\x74", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
+    {16, 93, 5, 3, 3, "\x54\x61\x62", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
+    {21, 93, 5, 3, 3, "\x45\x73\x63", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
+    {26, 93, 5, 3, 3, "\x53\x59\x4d", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}}
 };
-static std::vector<std::string> control_names = {"\x74\x78\x74\x5f\x73\x68\x65\x6c\x6c", "\x74\x78\x74\x5f\x63\x6f\x6d\x6d\x61\x6e\x64", "\x73\x68\x65\x6c\x6c\x5f\x74\x69\x6d\x65\x72", "\x62\x74\x6e\x5f\x63\x61\x6e\x64\x5f\x30", "\x62\x74\x6e\x5f\x63\x61\x6e\x64\x5f\x31", "\x62\x74\x6e\x5f\x63\x61\x6e\x64\x5f\x32", "\x62\x74\x6e\x5f\x61\x62\x63", "\x62\x74\x6e\x5f\x6e\x75\x6d", "\x62\x74\x6e\x5f\x6b\x61\x6e\x61", "\x62\x74\x6e\x5f\x72\x6f\x6d", "\x62\x74\x6e\x5f\x6e\x61\x76", "\x62\x74\x6e\x5f\x63\x74\x72\x6c", "\x62\x74\x6e\x5f\x73\x68\x69\x66\x74", "\x62\x74\x6e\x5f\x61\x6c\x74", "\x62\x74\x6e\x5f\x6b\x65\x79\x62\x6f\x61\x72\x64\x5f\x74\x6f\x67\x67\x6c\x65", "\x6b\x65\x79\x5f\x30\x30", "\x6b\x65\x79\x5f\x30\x31", "\x6b\x65\x79\x5f\x30\x32", "\x6b\x65\x79\x5f\x30\x33", "\x6b\x65\x79\x5f\x30\x34", "\x6b\x65\x79\x5f\x30\x35", "\x6b\x65\x79\x5f\x30\x36", "\x6b\x65\x79\x5f\x30\x37", "\x6b\x65\x79\x5f\x30\x38", "\x6b\x65\x79\x5f\x30\x39", "\x6b\x65\x79\x5f\x31\x30", "\x6b\x65\x79\x5f\x31\x31", "\x6b\x65\x79\x5f\x31\x32", "\x6b\x65\x79\x5f\x31\x33", "\x6b\x65\x79\x5f\x31\x34", "\x6b\x65\x79\x5f\x31\x35", "\x6b\x65\x79\x5f\x31\x36", "\x6b\x65\x79\x5f\x31\x37", "\x6b\x65\x79\x5f\x31\x38", "\x6b\x65\x79\x5f\x31\x39", "\x6b\x65\x79\x5f\x32\x30", "\x6b\x65\x79\x5f\x32\x31", "\x6b\x65\x79\x5f\x32\x32", "\x6b\x65\x79\x5f\x32\x33", "\x6b\x65\x79\x5f\x32\x34", "\x6b\x65\x79\x5f\x32\x35", "\x6b\x65\x79\x5f\x32\x36", "\x6b\x65\x79\x5f\x32\x37", "\x6b\x65\x79\x5f\x32\x38", "\x6b\x65\x79\x5f\x32\x39", "\x62\x74\x6e\x5f\x73\x70\x61\x63\x65", "\x62\x74\x6e\x5f\x62\x61\x63\x6b", "\x62\x74\x6e\x5f\x65\x6e\x74\x65\x72", "\x62\x74\x6e\x5f\x74\x61\x62", "\x62\x74\x6e\x5f\x65\x73\x63", "\x62\x74\x6e\x5f\x69\x6e\x74\x65\x72\x72\x75\x70\x74"};
+static std::vector<std::string> control_names = {"\x74\x78\x74\x5f\x73\x68\x65\x6c\x6c", "\x74\x78\x74\x5f\x63\x6f\x6d\x6d\x61\x6e\x64", "\x73\x68\x65\x6c\x6c\x5f\x74\x69\x6d\x65\x72", "\x62\x74\x6e\x5f\x63\x61\x6e\x64\x5f\x30", "\x62\x74\x6e\x5f\x63\x61\x6e\x64\x5f\x31", "\x62\x74\x6e\x5f\x63\x61\x6e\x64\x5f\x32", "\x62\x74\x6e\x5f\x61\x62\x63", "\x62\x74\x6e\x5f\x6e\x75\x6d", "\x62\x74\x6e\x5f\x6b\x61\x6e\x61", "\x62\x74\x6e\x5f\x72\x6f\x6d", "\x62\x74\x6e\x5f\x6e\x61\x76", "\x62\x74\x6e\x5f\x63\x74\x72\x6c", "\x62\x74\x6e\x5f\x73\x68\x69\x66\x74", "\x62\x74\x6e\x5f\x61\x6c\x74", "\x62\x74\x6e\x5f\x6b\x65\x79\x62\x6f\x61\x72\x64\x5f\x74\x6f\x67\x67\x6c\x65", "\x6b\x65\x79\x5f\x30\x30", "\x6b\x65\x79\x5f\x30\x31", "\x6b\x65\x79\x5f\x30\x32", "\x6b\x65\x79\x5f\x30\x33", "\x6b\x65\x79\x5f\x30\x34", "\x6b\x65\x79\x5f\x30\x35", "\x6b\x65\x79\x5f\x30\x36", "\x6b\x65\x79\x5f\x30\x37", "\x6b\x65\x79\x5f\x30\x38", "\x6b\x65\x79\x5f\x30\x39", "\x6b\x65\x79\x5f\x31\x30", "\x6b\x65\x79\x5f\x31\x31", "\x6b\x65\x79\x5f\x31\x32", "\x6b\x65\x79\x5f\x31\x33", "\x6b\x65\x79\x5f\x31\x34", "\x6b\x65\x79\x5f\x31\x35", "\x6b\x65\x79\x5f\x31\x36", "\x6b\x65\x79\x5f\x31\x37", "\x6b\x65\x79\x5f\x31\x38", "\x6b\x65\x79\x5f\x31\x39", "\x6b\x65\x79\x5f\x32\x30", "\x6b\x65\x79\x5f\x32\x31", "\x6b\x65\x79\x5f\x32\x32", "\x6b\x65\x79\x5f\x32\x33", "\x6b\x65\x79\x5f\x32\x34", "\x6b\x65\x79\x5f\x32\x35", "\x6b\x65\x79\x5f\x32\x36", "\x6b\x65\x79\x5f\x32\x37", "\x6b\x65\x79\x5f\x32\x38", "\x6b\x65\x79\x5f\x32\x39", "\x6b\x65\x79\x5f\x33\x30", "\x6b\x65\x79\x5f\x33\x31", "\x62\x74\x6e\x5f\x73\x70\x61\x63\x65", "\x62\x74\x6e\x5f\x62\x61\x63\x6b", "\x62\x74\x6e\x5f\x65\x6e\x74\x65\x72", "\x62\x74\x6e\x5f\x74\x61\x62", "\x62\x74\x6e\x5f\x65\x73\x63", "\x62\x74\x6e\x5f\x73\x79\x6d\x62\x6f\x6c\x73"};
 static std::vector<Menu> menus = {};
 static int focused = -1;
 static int pressed_control = -1;
@@ -121,8 +124,9 @@ static int style_pair(int fg, int bg, int fallback) {
     return pair < COLOR_PAIRS ? pair : fallback;
 }
 static bool inside_form(int x, int y) {
-    return x > origin_x && x < origin_x + form_w - 1 &&
-           y > origin_y && y < origin_y + form_h - 1;
+    int inset = form_display_border_and_caption ? 1 : 0;
+    return x >= origin_x + inset && x < origin_x + form_w - inset &&
+           y >= origin_y + inset && y < origin_y + form_h - inset;
 }
 static void glyph(int y, int x, wchar_t ch, int pair = 0, bool clip_form = false, int extra = 0) {
     if (y < 0 || y >= LINES || x < 0 || x >= COLS) return;
@@ -309,16 +313,23 @@ static void draw_menus() {
 static void draw() {
     erase();
     origin_x = std::max(0, std::min(form_x, COLS - form_w));
-    origin_y = std::max(1, std::min(form_y, LINES - form_h));
+    origin_y = std::max(form_display_border_and_caption ? 1 : 0,
+                        std::min(form_y, LINES - form_h));
     int form_pair = style_pair(form_fg, form_bg, 1);
     int form_background = style_pair(form_fg, form_bg, 2);
     int border_extra = form_fg >= 0 && form_bg >= 0 ? 0 : A_BOLD;
-    box(origin_x, origin_y, form_w, form_h, form_pair, false, border_extra);
-    for (int row = 1; row < form_h - 1; ++row)
-        fill(origin_y + row, origin_x + 1, form_w - 2, form_background);
-    std::string title = " " + form_title + " ";
-    int title_x = origin_x + form_w / 2 - cells(title) / 2;
-    text(origin_y, title_x, std::max(0, form_w - 2), title, form_pair, false, border_extra);
+    if (form_display_border_and_caption) {
+        box(origin_x, origin_y, form_w, form_h, form_pair, false, border_extra);
+        for (int row = 1; row < form_h - 1; ++row)
+            fill(origin_y + row, origin_x + 1, form_w - 2, form_background);
+        std::string title = " " + form_title + " ";
+        int title_x = origin_x + form_w / 2 - cells(title) / 2;
+        text(origin_y, title_x, std::max(0, form_w - 2), title, form_pair, false, border_extra);
+    } else {
+        for (int row = 0; row < form_h; ++row)
+            for (int col = 0; col < form_w; ++col)
+                glyph(origin_y + row, origin_x + col, L' ', form_background);
+    }
     for (std::size_t i = 0; i < controls.size(); ++i) draw_control(controls[i], static_cast<int>(i));
     native_draw_hook();
     draw_menus();
@@ -334,7 +345,8 @@ static void draw() {
 }
 static int hit_control(int mx, int my) {
     int x = mx - origin_x, y = my - origin_y;
-    if (x <= 0 || x >= form_w - 1 || y <= 0 || y >= form_h - 1) return -1;
+    int inset = form_display_border_and_caption ? 1 : 0;
+    if (x < inset || x >= form_w - inset || y < inset || y >= form_h - inset) return -1;
     for (int i = static_cast<int>(controls.size()) - 1; i >= 0; --i) {
         const auto& c = controls[i];
         if (c.type != 14 && x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h) return i;
@@ -896,7 +908,7 @@ public:
     int mouse_down = 0;
     int last_kana_key = -1, candidate_index = 0, slash_escape_state = 0;
     int layout_rows = 0, layout_cols = 0;
-    std::string mode = "ABC", romaji_prefix, romaji_tail, candidate_prefix, candidate_reading;
+    std::string mode = "ABC", symbol_return_mode = "ABC", romaji_prefix, romaji_tail, candidate_prefix, candidate_reading;
     std::vector<std::string> candidate_options;
     std::chrono::steady_clock::time_point last_kana_time{}, last_shift_time{}, last_q_time{};
     std::chrono::steady_clock::time_point escape_time{};
@@ -1159,18 +1171,20 @@ public:
         slash_escape_state = 0; layout();
     }
     void layout() {
-        form_x = 0; form_y = 1;
-        form_w = std::max(3, COLS); form_h = std::max(3, LINES - 1);
-        int content_w = std::max(1, form_w - 2);
+        form_x = 0; form_y = 0;
+        form_w = std::max(3, COLS); form_h = std::max(3, LINES);
+        int content_w = std::max(1, form_w);
         int shell_w = std::max(1, content_w - 1);
         int keyboard_w = std::min(30, content_w);
-        int keyboard_left = std::max(1, (form_w - keyboard_w) / 2);
+        int keyboard_left = std::max(0, (form_w - keyboard_w) / 2);
         int button_h = form_h >= 32 ? 3 : 1;
+        int key_rows = mode == "かな" || mode == "NAV" || mode == "SYM" ? 4 : 3;
         int candidates = !candidate_options.empty();
         int candidate_h = button_h;
         auto& shell = c("txt_shell");
         auto& input = c("txt_command");
-        shell.x = input.x = 1;
+        shell.x = input.x = 0;
+        shell.y = 0;
         shell.w = input.w = content_w;
 
         auto place = [&](std::vector<Control*> buttons, int y) {
@@ -1188,16 +1202,16 @@ public:
 
         int shell_h, candidate_y, mode_y = 0, toggle_y = 0;
         if (keyboard_visible) {
-            mode_y = form_h - 1 - 7 * button_h;
-            shell_h = std::max(1, mode_y - 2 - candidate_h * candidates);
+            mode_y = form_h - (key_rows + 3) * button_h;
+            shell_h = std::max(1, mode_y - 1 - candidate_h * candidates);
             candidate_y = mode_y - candidate_h;
         } else {
-            toggle_y = form_h - 1 - button_h;
-            shell_h = std::max(1, toggle_y - 2 - candidate_h * candidates);
+            toggle_y = form_h - button_h;
+            shell_h = std::max(1, toggle_y - 1 - candidate_h * candidates);
             candidate_y = toggle_y - candidate_h;
         }
         shell.h = shell_h;
-        input.y = shell_h + 1;
+        input.y = shell_h;
         if (started && (terminal.rows != shell_h || terminal.cols != shell_w)) {
             terminal.resize(shell_w, shell_h);
             pty.resize(shell_w, shell_h);
@@ -1216,9 +1230,9 @@ public:
 
         if (!keyboard_visible) {
             for (const auto& name : {"btn_abc","btn_num","btn_kana","btn_rom","btn_nav","btn_ctrl",
-                "btn_shift","btn_alt","btn_space","btn_back","btn_enter","btn_tab","btn_esc","btn_interrupt"})
+                "btn_shift","btn_alt","btn_space","btn_back","btn_enter","btn_tab","btn_esc","btn_symbols"})
                 c(name).x = -50;
-            for (int i = 0; i < 30; ++i) key(i).x = -50;
+            for (int i = 0; i < 32; ++i) key(i).x = -50;
             auto& toggle = c("btn_keyboard_toggle");
             toggle.caption = "↑ Keyboard " + mode;
             place({&toggle}, toggle_y);
@@ -1241,8 +1255,9 @@ public:
         c("btn_alt").bg_color = alt_latch ? 13 : 12;
         c("btn_shift").bg_color = shift_latch || caps_lock ? 13 : 12;
         c("btn_shift").caption = caps_lock ? "CAPS" : "Shift";
+        c("btn_symbols").bg_color = mode == "SYM" ? 13 : 12;
         int key_y = mod_y + button_h;
-        for (int i = 0; i < 30; ++i) {
+        for (int i = 0; i < 32; ++i) {
             auto& button = key(i);
             button.x = -50; button.y = key_y; button.w = 1; button.h = button_h;
         }
@@ -1259,40 +1274,36 @@ public:
                 }
                 place(buttons, key_y + row * button_h);
             }
-            const std::array<std::string,4> symbols = {"-","/","." ,"="};
-            const std::array<std::string,4> shifted = {"_","?",">","+"};
-            std::vector<Control*> buttons;
-            for (int i = 0; i < 4; ++i) {
-                auto& button = key(index++);
-                button.caption = shift_latch ? shifted[i] : symbols[i];
-                buttons.push_back(&button);
-            }
-            place(buttons, key_y + 3 * button_h);
         } else {
             std::vector<std::string> labels;
-            if (mode == "123") labels = {"1","2","3","4","5","6","7","8","9",".","0","/"};
-            else if (mode == "NAV") labels = {"←","↑","→","↓","Home","End","PgUp","PgDn","Del","Ins","F1","F2"};
-            else labels = {"あ","か","さ","た","な","は","ま","や","ら","゛","わ","小"};
-            for (int row = 0; row < 4; ++row) {
+            std::vector<int> row_sizes;
+            if (mode == "SYM") {
+                labels = {"!","@","#","$","%","^","&","*","(",")","_","+","{","}","|","~","`","-","=","[","]","\\",";","'",",",".","/",":","\"","<",">","?"};
+                row_sizes = {8,8,8,8};
+            } else if (mode == "123") {
+                labels = {"1","2","3","4","5","6","7","8","9","0"};
+                row_sizes = {3,3,4};
+            } else if (mode == "NAV") {
+                labels = {"←","↑","→","↓","Home","End","PgUp","PgDn","Del","Ins","F1","F2"};
+                row_sizes = {3,3,3,3};
+            } else {
+                labels = {"あ","か","さ","た","な","は","ま","や","ら","゛","わ","小"};
+                row_sizes = {3,3,3,3};
+            }
+            int index = 0;
+            for (int row = 0; row < static_cast<int>(row_sizes.size()); ++row) {
                 std::vector<Control*> buttons;
-                for (int col = 0; col < 3; ++col) {
-                    int index = row * 3 + col;
+                for (int col = 0; col < row_sizes[row]; ++col) {
                     auto& button = key(index);
                     button.caption = labels[index];
-                    if (mode == "123" && shift_latch && button.caption.size() == 1) {
-                        const std::string from = "1234567890/.";
-                        const std::string to = "!@#$%^&*()?>";
-                        auto position = from.find(button.caption[0]);
-                        if (position != std::string::npos && position < to.size())
-                            button.caption = std::string(1, to[position]);
-                    }
                     buttons.push_back(&button);
+                    ++index;
                 }
                 place(buttons, key_y + row * button_h);
             }
         }
         place({&c("btn_space"), &c("btn_back"), &c("btn_enter"), &c("btn_tab"),
-               &c("btn_esc"), &c("btn_interrupt")}, key_y + 4 * button_h);
+               &c("btn_esc"), &c("btn_symbols")}, key_y + key_rows * button_h);
         layout_rows = LINES; layout_cols = COLS;
     }
     void start() {
@@ -1342,6 +1353,10 @@ public:
         else if (name == "btn_kana") set_mode("かな");
         else if (name == "btn_rom") set_mode("ROM");
         else if (name == "btn_nav") set_mode("NAV");
+        else if (name == "btn_symbols") {
+            if (mode == "SYM") set_mode(symbol_return_mode);
+            else { symbol_return_mode = mode; set_mode("SYM"); }
+        }
         else if (name == "btn_keyboard_toggle") { keyboard_visible = !keyboard_visible; layout(); }
         else if (name == "btn_ctrl") { ctrl_latch = !ctrl_latch; last_shift_time = {}; layout(); }
         else if (name == "btn_alt") { alt_latch = !alt_latch; last_shift_time = {}; layout(); }
@@ -1354,8 +1369,6 @@ public:
         else if (name == "btn_enter") enter();
         else if (name == "btn_tab") tab();
         else if (name == "btn_esc") escape();
-        else if (name == "btn_interrupt") { if (!candidate_options.empty()) clear_candidates();
-            bool ctrl, alt, shift; take_modifiers(ctrl, alt, shift); flush_key("\x03"); }
         else if (name.substr(0, 8) == "btn_cand") {
             int slot = name.back() - '0';
             int index = (candidate_index / 3)*3 + slot;
@@ -1421,7 +1434,7 @@ public:
         flush_key(encode_text("\033", false, alt));
     }
     void press_key(int index) {
-        if (index < 0 || index >= 30) return;
+        if (index < 0 || index >= 32) return;
         if (!candidate_options.empty()) commit_candidate();
         std::string pressed = key(index).caption;
         if (key(index).x < 0) return;
@@ -1496,7 +1509,11 @@ public:
         if (input == '\n' || input == '\r' || input == KEY_ENTER) { enter(); return true; }
         if (input == KEY_BACKSPACE || input == 8 || input == 127) { back(); return true; }
         if (input == '\t') { tab(); return true; }
-        if (input == 3) { click("btn_interrupt"); return true; }
+        if (input == 3) {
+            if (!candidate_options.empty()) clear_candidates();
+            bool ctrl, alt, shift; take_modifiers(ctrl, alt, shift);
+            flush_key("\x03"); return true;
+        }
         if (input > 0 && input < 32) {
             if (!candidate_options.empty()) commit_candidate();
             flush_key(std::string(1, static_cast<char>(input)));

@@ -23,13 +23,13 @@ def _fingerprint(project):
 
 # Fingerprint covers the form and every control/menu callback.  It prevents a
 # changed Python implementation from silently receiving an outdated C++ port.
-PHONE_SHELL_FINGERPRINT = '9408f30af788412885ccaac9d932a6aaee38631d8724d2a442618cbfe53e3268'
+PHONE_SHELL_FINGERPRINT = '8ed4774af18c2cb530575b5753ffd134de1bf716495691c2b0af09567c5ea5be'
 
 
 def is_phone_shell(project):
     names = {item.get('name_id') for item in project.get('controls', [])}
-    return (len(names) == 51 and {'txt_shell', 'txt_command', 'btn_keyboard_toggle',
-                                  'btn_cand_0', 'btn_space', 'key_29'} <= names and
+    return (len(names) == 53 and {'txt_shell', 'txt_command', 'btn_keyboard_toggle',
+                                  'btn_cand_0', 'btn_symbols', 'key_31'} <= names and
             _fingerprint(project) == PHONE_SHELL_FINGERPRINT)
 
 
@@ -67,7 +67,7 @@ public:
     int mouse_down = 0;
     int last_kana_key = -1, candidate_index = 0, slash_escape_state = 0;
     int layout_rows = 0, layout_cols = 0;
-    std::string mode = "ABC", romaji_prefix, romaji_tail, candidate_prefix, candidate_reading;
+    std::string mode = "ABC", symbol_return_mode = "ABC", romaji_prefix, romaji_tail, candidate_prefix, candidate_reading;
     std::vector<std::string> candidate_options;
     std::chrono::steady_clock::time_point last_kana_time{}, last_shift_time{}, last_q_time{};
     std::chrono::steady_clock::time_point escape_time{};
@@ -248,18 +248,20 @@ public:
         slash_escape_state = 0; layout();
     }
     void layout() {
-        form_x = 0; form_y = 1;
-        form_w = std::max(3, COLS); form_h = std::max(3, LINES - 1);
-        int content_w = std::max(1, form_w - 2);
+        form_x = 0; form_y = 0;
+        form_w = std::max(3, COLS); form_h = std::max(3, LINES);
+        int content_w = std::max(1, form_w);
         int shell_w = std::max(1, content_w - 1);
         int keyboard_w = std::min(30, content_w);
-        int keyboard_left = std::max(1, (form_w - keyboard_w) / 2);
+        int keyboard_left = std::max(0, (form_w - keyboard_w) / 2);
         int button_h = form_h >= 32 ? 3 : 1;
+        int key_rows = mode == "かな" || mode == "NAV" || mode == "SYM" ? 4 : 3;
         int candidates = !candidate_options.empty();
         int candidate_h = button_h;
         auto& shell = c("txt_shell");
         auto& input = c("txt_command");
-        shell.x = input.x = 1;
+        shell.x = input.x = 0;
+        shell.y = 0;
         shell.w = input.w = content_w;
 
         auto place = [&](std::vector<Control*> buttons, int y) {
@@ -277,16 +279,16 @@ public:
 
         int shell_h, candidate_y, mode_y = 0, toggle_y = 0;
         if (keyboard_visible) {
-            mode_y = form_h - 1 - 7 * button_h;
-            shell_h = std::max(1, mode_y - 2 - candidate_h * candidates);
+            mode_y = form_h - (key_rows + 3) * button_h;
+            shell_h = std::max(1, mode_y - 1 - candidate_h * candidates);
             candidate_y = mode_y - candidate_h;
         } else {
-            toggle_y = form_h - 1 - button_h;
-            shell_h = std::max(1, toggle_y - 2 - candidate_h * candidates);
+            toggle_y = form_h - button_h;
+            shell_h = std::max(1, toggle_y - 1 - candidate_h * candidates);
             candidate_y = toggle_y - candidate_h;
         }
         shell.h = shell_h;
-        input.y = shell_h + 1;
+        input.y = shell_h;
         if (started && (terminal.rows != shell_h || terminal.cols != shell_w)) {
             terminal.resize(shell_w, shell_h);
             pty.resize(shell_w, shell_h);
@@ -305,9 +307,9 @@ public:
 
         if (!keyboard_visible) {
             for (const auto& name : {"btn_abc","btn_num","btn_kana","btn_rom","btn_nav","btn_ctrl",
-                "btn_shift","btn_alt","btn_space","btn_back","btn_enter","btn_tab","btn_esc","btn_interrupt"})
+                "btn_shift","btn_alt","btn_space","btn_back","btn_enter","btn_tab","btn_esc","btn_symbols"})
                 c(name).x = -50;
-            for (int i = 0; i < 30; ++i) key(i).x = -50;
+            for (int i = 0; i < 32; ++i) key(i).x = -50;
             auto& toggle = c("btn_keyboard_toggle");
             toggle.caption = "↑ Keyboard " + mode;
             place({&toggle}, toggle_y);
@@ -330,8 +332,9 @@ public:
         c("btn_alt").bg_color = alt_latch ? 13 : 12;
         c("btn_shift").bg_color = shift_latch || caps_lock ? 13 : 12;
         c("btn_shift").caption = caps_lock ? "CAPS" : "Shift";
+        c("btn_symbols").bg_color = mode == "SYM" ? 13 : 12;
         int key_y = mod_y + button_h;
-        for (int i = 0; i < 30; ++i) {
+        for (int i = 0; i < 32; ++i) {
             auto& button = key(i);
             button.x = -50; button.y = key_y; button.w = 1; button.h = button_h;
         }
@@ -348,40 +351,36 @@ public:
                 }
                 place(buttons, key_y + row * button_h);
             }
-            const std::array<std::string,4> symbols = {"-","/","." ,"="};
-            const std::array<std::string,4> shifted = {"_","?",">","+"};
-            std::vector<Control*> buttons;
-            for (int i = 0; i < 4; ++i) {
-                auto& button = key(index++);
-                button.caption = shift_latch ? shifted[i] : symbols[i];
-                buttons.push_back(&button);
-            }
-            place(buttons, key_y + 3 * button_h);
         } else {
             std::vector<std::string> labels;
-            if (mode == "123") labels = {"1","2","3","4","5","6","7","8","9",".","0","/"};
-            else if (mode == "NAV") labels = {"←","↑","→","↓","Home","End","PgUp","PgDn","Del","Ins","F1","F2"};
-            else labels = {"あ","か","さ","た","な","は","ま","や","ら","゛","わ","小"};
-            for (int row = 0; row < 4; ++row) {
+            std::vector<int> row_sizes;
+            if (mode == "SYM") {
+                labels = {"!","@","#","$","%","^","&","*","(",")","_","+","{","}","|","~","`","-","=","[","]","\\",";","'",",",".","/",":","\"","<",">","?"};
+                row_sizes = {8,8,8,8};
+            } else if (mode == "123") {
+                labels = {"1","2","3","4","5","6","7","8","9","0"};
+                row_sizes = {3,3,4};
+            } else if (mode == "NAV") {
+                labels = {"←","↑","→","↓","Home","End","PgUp","PgDn","Del","Ins","F1","F2"};
+                row_sizes = {3,3,3,3};
+            } else {
+                labels = {"あ","か","さ","た","な","は","ま","や","ら","゛","わ","小"};
+                row_sizes = {3,3,3,3};
+            }
+            int index = 0;
+            for (int row = 0; row < static_cast<int>(row_sizes.size()); ++row) {
                 std::vector<Control*> buttons;
-                for (int col = 0; col < 3; ++col) {
-                    int index = row * 3 + col;
+                for (int col = 0; col < row_sizes[row]; ++col) {
                     auto& button = key(index);
                     button.caption = labels[index];
-                    if (mode == "123" && shift_latch && button.caption.size() == 1) {
-                        const std::string from = "1234567890/.";
-                        const std::string to = "!@#$%^&*()?>";
-                        auto position = from.find(button.caption[0]);
-                        if (position != std::string::npos && position < to.size())
-                            button.caption = std::string(1, to[position]);
-                    }
                     buttons.push_back(&button);
+                    ++index;
                 }
                 place(buttons, key_y + row * button_h);
             }
         }
         place({&c("btn_space"), &c("btn_back"), &c("btn_enter"), &c("btn_tab"),
-               &c("btn_esc"), &c("btn_interrupt")}, key_y + 4 * button_h);
+               &c("btn_esc"), &c("btn_symbols")}, key_y + key_rows * button_h);
         layout_rows = LINES; layout_cols = COLS;
     }
     void start() {
@@ -431,6 +430,10 @@ public:
         else if (name == "btn_kana") set_mode("かな");
         else if (name == "btn_rom") set_mode("ROM");
         else if (name == "btn_nav") set_mode("NAV");
+        else if (name == "btn_symbols") {
+            if (mode == "SYM") set_mode(symbol_return_mode);
+            else { symbol_return_mode = mode; set_mode("SYM"); }
+        }
         else if (name == "btn_keyboard_toggle") { keyboard_visible = !keyboard_visible; layout(); }
         else if (name == "btn_ctrl") { ctrl_latch = !ctrl_latch; last_shift_time = {}; layout(); }
         else if (name == "btn_alt") { alt_latch = !alt_latch; last_shift_time = {}; layout(); }
@@ -443,8 +446,6 @@ public:
         else if (name == "btn_enter") enter();
         else if (name == "btn_tab") tab();
         else if (name == "btn_esc") escape();
-        else if (name == "btn_interrupt") { if (!candidate_options.empty()) clear_candidates();
-            bool ctrl, alt, shift; take_modifiers(ctrl, alt, shift); flush_key("\x03"); }
         else if (name.substr(0, 8) == "btn_cand") {
             int slot = name.back() - '0';
             int index = (candidate_index / 3)*3 + slot;
@@ -510,7 +511,7 @@ public:
         flush_key(encode_text("\033", false, alt));
     }
     void press_key(int index) {
-        if (index < 0 || index >= 30) return;
+        if (index < 0 || index >= 32) return;
         if (!candidate_options.empty()) commit_candidate();
         std::string pressed = key(index).caption;
         if (key(index).x < 0) return;
@@ -585,7 +586,11 @@ public:
         if (input == '\n' || input == '\r' || input == KEY_ENTER) { enter(); return true; }
         if (input == KEY_BACKSPACE || input == 8 || input == 127) { back(); return true; }
         if (input == '\t') { tab(); return true; }
-        if (input == 3) { click("btn_interrupt"); return true; }
+        if (input == 3) {
+            if (!candidate_options.empty()) clear_candidates();
+            bool ctrl, alt, shift; take_modifiers(ctrl, alt, shift);
+            flush_key("\x03"); return true;
+        }
         if (input > 0 && input < 32) {
             if (!candidate_options.empty()) commit_candidate();
             flush_key(std::string(1, static_cast<char>(input)));

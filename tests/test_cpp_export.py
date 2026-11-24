@@ -7,6 +7,7 @@ from pathlib import Path
 import pty
 import select
 import shutil
+import string
 import struct
 import subprocess
 import sys
@@ -15,6 +16,7 @@ import termios
 import time
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,31 +28,71 @@ from rad_tui_basic.cpp_export import CppExportError, export_cpp  # noqa: E402
 class PhoneLayoutTests(unittest.TestCase):
     def test_python_phone_form_fills_screen_and_keyboard_stays_centered(self):
         project = json.loads((ROOT / 'projects/phone_shell.json').read_text())
+        self.assertNotIn('btn_interrupt', {item['name_id'] for item in project['controls']})
         for cols, lines in ((33, 100), (80, 40), (28, 24), (50, 120)):
-            with self.subTest(cols=cols, lines=lines):
-                scope = {'Form1': SimpleNamespace(x=0, y=1, w=33, h=100)}
-                scope.update({item['name_id']: SimpleNamespace(**item)
-                              for item in project['controls']})
-                exec(project['code'], scope)
-                scope.update(curses=SimpleNamespace(COLS=cols, LINES=lines),
-                             mode='ABC', keyboard_visible=True, candidate_options=[],
-                             candidate_index=0, ctrl_latch=False, alt_latch=False,
-                             shift_latch=False, caps_lock=False)
-                scope['layout']()
-                form = scope['Form1']
-                self.assertEqual((form.x, form.y, form.w, form.h), (0, 1, cols, lines - 1))
-                self.assertEqual(scope['txt_shell'].w, cols - 2)
-                self.assertEqual(scope['btn_space'].y + scope['btn_space'].h, form.h - 1)
-                left = (form.w - min(30, form.w - 2)) // 2
-                self.assertEqual(scope['btn_abc'].x, left)
-                self.assertEqual(scope['btn_interrupt'].x + scope['btn_interrupt'].w,
-                                 left + min(30, form.w - 2))
-                self.assertEqual(scope['layout_rows'], (lines, cols))
-                scope['keyboard_visible'] = False
-                scope['layout']()
-                self.assertEqual(scope['btn_keyboard_toggle'].x, left)
-                self.assertEqual(scope['btn_keyboard_toggle'].y + scope['btn_keyboard_toggle'].h,
-                                 form.h - 1)
+            for standalone in (False, True):
+                with self.subTest(cols=cols, lines=lines, standalone=standalone), patch.object(
+                        sys, '_is_standalone_run', standalone, create=True):
+                    scope = {'Form1': SimpleNamespace(x=0, y=1, w=33, h=100)}
+                    scope.update({item['name_id']: SimpleNamespace(**item)
+                                  for item in project['controls']})
+                    exec(project['code'], scope)
+                    scope.update(curses=SimpleNamespace(COLS=cols, LINES=lines),
+                                 mode='ABC', keyboard_visible=True, candidate_options=[],
+                                 candidate_index=0, ctrl_latch=False, alt_latch=False,
+                                 shift_latch=False, caps_lock=False)
+                    scope['layout']()
+                    form = scope['Form1']
+                    self.assertEqual((form.x, form.y, form.w, form.h),
+                                     (0, 0 if standalone else 1, cols,
+                                      lines if standalone else lines - 1))
+                    self.assertEqual((scope['txt_shell'].x, scope['txt_shell'].w), (0, cols))
+                    self.assertEqual(scope['txt_shell'].y, 0)
+                    self.assertEqual(scope['btn_symbols'].y + scope['btn_symbols'].h, form.h)
+                    left = (form.w - min(30, form.w)) // 2
+                    self.assertEqual(scope['btn_abc'].x, left)
+                    self.assertEqual(scope['btn_symbols'].x + scope['btn_symbols'].w,
+                                     left + min(30, form.w))
+                    for keyboard_mode, count in (('ABC', 26), ('ROM', 26), ('123', 10),
+                                                 ('かな', 12), ('NAV', 12), ('SYM', 32)):
+                        scope['mode'] = keyboard_mode
+                        scope['layout']()
+                        keys = [scope[f'key_{i:02d}'] for i in range(32)]
+                        visible = [key for key in keys if key.x >= 0]
+                        self.assertEqual(len(visible), count)
+                        self.assertEqual(max(key.y + key.h for key in visible),
+                                         scope['btn_space'].y)
+                        self.assertEqual(scope['btn_symbols'].y + scope['btn_symbols'].h,
+                                         form.h)
+                        for row_y in {key.y for key in visible}:
+                            row = sorted((key for key in visible if key.y == row_y),
+                                         key=lambda key: key.x)
+                            self.assertEqual(row[0].x, left)
+                            self.assertEqual(row[-1].x + row[-1].w, left + min(30, cols))
+                            self.assertTrue(all(a.x + a.w == b.x for a, b in zip(row, row[1:])))
+                        if keyboard_mode in ('ABC', 'ROM'):
+                            self.assertEqual(''.join(key.caption.lower() for key in visible),
+                                             'qwertyuiopasdfghjklzxcvbnm')
+                        elif keyboard_mode == '123':
+                            self.assertEqual({key.caption for key in visible}, set(string.digits))
+                        elif keyboard_mode == 'SYM':
+                            self.assertEqual({key.caption for key in visible},
+                                             set(string.punctuation))
+                    scope['mode'] = 'ABC'
+                    scope['symbol_return_mode'] = 'ABC'
+                    scope['layout']()
+                    scope['on_click_btn_symbols']()
+                    self.assertEqual(scope['mode'], 'SYM')
+                    scope['press_key'](0)
+                    self.assertEqual(scope['txt_command'].caption, '!')
+                    scope['on_click_btn_symbols']()
+                    self.assertEqual(scope['mode'], 'ABC')
+                    self.assertEqual(scope['layout_rows'], (lines, cols))
+                    scope['keyboard_visible'] = False
+                    scope['layout']()
+                    self.assertEqual(scope['btn_keyboard_toggle'].x, left)
+                    self.assertEqual(scope['btn_keyboard_toggle'].y + scope['btn_keyboard_toggle'].h,
+                                     form.h)
 
 
 def read_pty(master, seconds):
@@ -150,7 +192,9 @@ class CppExportIntegrationTests(unittest.TestCase):
             '  std::setlocale(LC_ALL, "");\n'
             '  initscr(); cbreak(); noecho();\n'
             '  phone.init_romaji(); phone.mode = "ABC"; phone.command_set(""); phone.layout();\n'
-            '  origin_x = 0; origin_y = 1;\n'
+            '  origin_x = 0; origin_y = 0;\n'
+            '  bool edges = inside_form(0, 0) && inside_form(COLS - 1, LINES - 1) &&\n'
+            '      hit_control(0, 0) >= 0;\n'
             '  MEVENT mode_tap{}; mode_tap.x = phone.c("btn_rom").x + 1;\n'
             '  mode_tap.y = phone.c("btn_rom").y + origin_y + 1; mode_tap.bstate = BUTTON1_RELEASED;\n'
             '  phone.mouse(mode_tap); bool touch_mode = phone.mode == "ROM";\n'
@@ -167,13 +211,24 @@ class CppExportIntegrationTests(unittest.TestCase):
             '  bool toggled = phone.mode == "ABC";\n'
             '  phone.physical(\'/\'); phone.physical(\'q\'); phone.physical(\'z\');\n'
             '  bool escape = phone.command() == "日本qz";\n'
-            '  bool wide_form = form_w == COLS && form_h == LINES - 1;\n'
+            '  bool wide_form = form_w == COLS && form_h == LINES && form_y == 0;\n'
             '  resizeterm(24, 28); phone.keyboard_visible = true; phone.layout();\n'
-            '  bool compact = form_w == 28 && form_h == 23 && phone.c("btn_space").h == 1 &&\n'
-            '      phone.c("btn_space").y + 1 == form_h - 1 && phone.c("btn_abc").x == 1 &&\n'
-            '      phone.c("txt_shell").w == 26;\n'
-            '  endwin(); return !(touch_mode && kana && options && kanji && minimized && toggled && escape &&\n'
-            '      wide_form && compact);\n'
+            '  bool compact = form_w == 28 && form_h == 24 && phone.c("btn_space").h == 1 &&\n'
+            '      phone.c("btn_space").y + 1 == form_h && phone.c("btn_abc").x == 0 &&\n'
+            '      phone.c("txt_shell").x == 0 && phone.c("txt_shell").w == 28;\n'
+            '  phone.click("btn_symbols");\n'
+            '  bool symbols = phone.mode == "SYM" && phone.key(0).caption == "!" &&\n'
+            '      phone.key(31).caption == "?" && phone.key(31).x >= 0;\n'
+            '  phone.press_key(31); bool symbol_input = phone.command().back() == \'?\';\n'
+            '  phone.click("btn_symbols");\n'
+            '  bool restored = phone.mode == "ABC" && phone.key(26).x < 0 &&\n'
+            '      phone.c("btn_symbols").y + phone.c("btn_symbols").h == form_h;\n'
+            '  phone.click("btn_num");\n'
+            '  bool digits = phone.key(9).caption == "0" && phone.key(10).x < 0;\n'
+            '  endwin(); return !edges ? 11 : !touch_mode ? 12 : !kana ? 13 : !options ? 14 :\n'
+            '      !kanji ? 15 : !minimized ? 16 : !toggled ? 17 : !escape ? 18 :\n'
+            '      !wide_form ? 19 : !compact ? 20 : !symbols ? 21 : !symbol_input ? 22 :\n'
+            '      !restored ? 23 : !digits ? 24 : 0;\n'
             '}\n')
         binary = self.folder / 'ime_harness'
         subprocess.run(['g++', '-std=c++17', '-O2', str(harness), '-lncursesw',

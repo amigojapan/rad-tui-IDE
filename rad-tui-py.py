@@ -45,6 +45,7 @@ I18N = {
         'prop_pinned': 'Pinned:',
         'prop_resiz': 'Resiz:',
         'prop_hidden': 'Hidden:',
+        'prop_border_caption': 'Border/Cap',
         'prop_fg': 'FGColor:',
         'prop_bg': 'BGColor:',
         'menu_top': ' File  Edit  [RUN ] Menu Editor ',
@@ -112,6 +113,7 @@ I18N = {
         'prop_pinned': 'Anclad:',
         'prop_resiz': 'Redim: ',
         'prop_hidden': 'Oculto:',
+        'prop_border_caption': 'Borde/Tit:',
         'prop_fg': 'Color T:',
         'prop_bg': 'Color F:',
         'menu_top': ' Archivo  Editar  [EJECUTAR ] Editor de Menus ',
@@ -179,6 +181,7 @@ I18N = {
         'prop_pinned': '固定: ',
         'prop_resiz': '可変: ',
         'prop_hidden': '非表示:',
+        'prop_border_caption': '枠/題名:',
         'prop_fg': '文字色:',
         'prop_bg': '背景色:',
         'menu_top': ' ファイル  編集  [実行 ] メニューエディタ ',
@@ -421,6 +424,7 @@ class Window:
         self.pinned_topmost = False
         self.resizable = True
         self.hidden = False
+        self.display_border_and_caption = True
         self.fg_color = -1
         self.custom_bg = -1
         self.menus = []
@@ -431,7 +435,8 @@ class Window:
             'x': self.x, 'y': self.y, 'w': self.w, 'h': self.h,
             'title': self.title, 'name_id': self.name_id,
             'pinned_topmost': self.pinned_topmost, 'resizable': self.resizable,
-            'hidden': self.hidden, 'fg_color': self.fg_color, 'custom_bg': self.custom_bg,
+            'hidden': self.hidden, 'display_border_and_caption': self.display_border_and_caption,
+            'fg_color': self.fg_color, 'custom_bg': self.custom_bg,
             'menus': [m.to_dict() for m in self.menus],
             'controls': [c.to_dict() for c in self.controls], 'code': self.code
         }
@@ -442,6 +447,7 @@ class Window:
         w.pinned_topmost = data.get('pinned_topmost', False)
         w.resizable = data.get('resizable', True)
         w.hidden = data.get('hidden', False)
+        w.display_border_and_caption = data.get('display_border_and_caption', True)
         w.fg_color = data.get('fg_color', -1)
         w.custom_bg = data.get('custom_bg', -1)
         w.menus = [MenuItem.from_dict(m) for m in data.get('menus', [])]
@@ -491,20 +497,29 @@ class Window:
             form_pair = curses.color_pair(20 + (self.custom_bg % 8) * 8 + (self.fg_color % 8))
             C_BORDER = C_BG = form_pair
 
-        write_at(stdscr, self.x, self.y, "┌" + "─" * (self.w - 2) + "┐", C_BORDER)
-        for i in range(1, self.h - 1):
-            write_at(stdscr, self.x, self.y + i, "│", C_BORDER)
-            write_at(stdscr, self.x + 1, self.y + i, " " * (self.w - 2), C_BG)
-            write_at(stdscr, self.x + self.w - 1, self.y + i, "│", C_BORDER)
-        write_at(stdscr, self.x, self.y + self.h - 1, "└" + "─" * (self.w - 2) + "┘", C_BORDER)
+        if run_mode and not self.display_border_and_caption:
+            for i in range(self.h):
+                write_at(stdscr, self.x, self.y + i, " " * self.w, C_BG)
+        else:
+            write_at(stdscr, self.x, self.y, "┌" + "─" * (self.w - 2) + "┐", C_BORDER)
+            for i in range(1, self.h - 1):
+                write_at(stdscr, self.x, self.y + i, "│", C_BORDER)
+                write_at(stdscr, self.x + 1, self.y + i, " " * (self.w - 2), C_BG)
+                write_at(stdscr, self.x + self.w - 1, self.y + i, "│", C_BORDER)
+            write_at(stdscr, self.x, self.y + self.h - 1, "└" + "─" * (self.w - 2) + "┘", C_BORDER)
 
-        title_str = f" {self.title} "
-        tx = self.x + (self.w // 2) - (d_len(title_str) // 2)
-        write_clipped_raw(stdscr, tx, self.y, title_str, C_BORDER, self.x, self.w)
+            if self.display_border_and_caption:
+                title_str = f" {self.title} "
+                tx = self.x + (self.w // 2) - (d_len(title_str) // 2)
+                write_clipped_raw(stdscr, tx, self.y, title_str, C_BORDER, self.x, self.w)
 
         def write_clipped(cx, cy, text, attr):
-            if cy <= self.y or cy >= self.y + self.h - 1: return
-            write_clipped_raw(stdscr, cx, cy, text, attr, self.x + 1, self.w - 2)
+            if run_mode and not self.display_border_and_caption:
+                if cy < self.y or cy >= self.y + self.h: return
+                write_clipped_raw(stdscr, cx, cy, text, attr, self.x, self.w)
+            else:
+                if cy <= self.y or cy >= self.y + self.h - 1: return
+                write_clipped_raw(stdscr, cx, cy, text, attr, self.x + 1, self.w - 2)
 
         for i, c in enumerate(self.controls):
             if run_mode and c.tool_type == 14: continue 
@@ -710,7 +725,10 @@ class Window:
         return (self.x <= mx < self.x + self.w) and (self.y <= my < self.y + self.h)
 
     def hit_control(self, lx, ly):
-        if lx <= 0 or lx >= self.w - 1 or ly <= 0 or ly >= self.h - 1: return -1 
+        if self.display_border_and_caption:
+            if lx <= 0 or lx >= self.w - 1 or ly <= 0 or ly >= self.h - 1: return -1
+        elif lx < 0 or lx >= self.w or ly < 0 or ly >= self.h:
+            return -1
         for i in range(len(self.controls) - 1, -1, -1):
             c = self.controls[i]
             if (c.x <= lx < c.x + c.w) and (c.y <= ly < c.y + c.h): return i
@@ -854,6 +872,7 @@ def draw_properties(stdscr, prop_win, selected_win, selected_ctrl_idx, editing_p
         draw_prop(13, _t('prop_hidden'), 9, "[X]" if w.hidden else "[ ]")
         draw_prop(14, _t('prop_fg'), 10, str(getattr(w, 'fg_color', -1)))
         draw_prop(15, _t('prop_bg'), 11, str(getattr(w, 'custom_bg', -1)))
+        draw_prop(16, _t('prop_border_caption'), 14, "[X]" if w.display_border_and_caption else "[ ]")
     else:
         write_clipped_raw(stdscr, prop_win.x + 2, prop_win.y + 2, _t('prop_no_sel'), C_LABEL, prop_win.x + 1, prop_win.w - 2)
 
@@ -1243,7 +1262,7 @@ def main(stdscr):
 
     tools = Toolbox(0, 1)
     main_form = Window(17, 1, 41, 18, "", "Form1")
-    prop_win = Window(48, 8, 26, 14, _t('prop_title'), "Properties")
+    prop_win = Window(48, 8, 26, 18, _t('prop_title'), "Properties")
     prop_win.pinned_topmost = True
     
     windows = [main_form, prop_win]
@@ -1590,7 +1609,7 @@ def main(stdscr):
                         if t in (8, 15): return 15
                         if t == 13: return 18
                         return 12
-                    return 17
+                    return 18
                 win.h = get_prop_h(selected_win, selected_ctrl_idx)
                 win.draw(stdscr, C, act_idx, press_idx, run_mode)
                 draw_properties(stdscr, win, selected_win, selected_ctrl_idx, editing_prop, edit_buffer, C, tools)
@@ -2091,6 +2110,7 @@ def main(stdscr):
                                                     elif prop_local_y == 13: w.hidden, clicked_prop_row = not w.hidden, False
                                                     elif prop_local_y == 14: editing_prop, edit_buffer = 10, str(getattr(w, 'fg_color', -1))
                                                     elif prop_local_y == 15: editing_prop, edit_buffer = 11, str(getattr(w, 'custom_bg', -1))
+                                                    elif prop_local_y == 16: w.display_border_and_caption, clicked_prop_row = not w.display_border_and_caption, False
                                                     else: clicked_prop_row = False
                                             else:
                                                 dragged_win, drag_offset_x, drag_offset_y = win, local_x, local_y

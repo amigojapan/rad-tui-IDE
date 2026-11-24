@@ -97,6 +97,7 @@ struct MenuRegion { int x, y, w, depth; const std::vector<Menu>* items; };
 static int form_x = @@FORM_X@@, form_y = @@FORM_Y@@;
 static int form_w = @@FORM_W@@, form_h = @@FORM_H@@;
 static int form_fg = @@FORM_FG@@, form_bg = @@FORM_BG@@;
+static bool form_display_border_and_caption = @@FORM_DISPLAY_BORDER_AND_CAPTION@@;
 static std::string form_title = @@FORM_TITLE@@;
 static std::vector<Control> controls = {
 @@CONTROLS@@
@@ -140,8 +141,9 @@ static int style_pair(int fg, int bg, int fallback) {
     return pair < COLOR_PAIRS ? pair : fallback;
 }
 static bool inside_form(int x, int y) {
-    return x > origin_x && x < origin_x + form_w - 1 &&
-           y > origin_y && y < origin_y + form_h - 1;
+    int inset = form_display_border_and_caption ? 1 : 0;
+    return x >= origin_x + inset && x < origin_x + form_w - inset &&
+           y >= origin_y + inset && y < origin_y + form_h - inset;
 }
 static void glyph(int y, int x, wchar_t ch, int pair = 0, bool clip_form = false, int extra = 0) {
     if (y < 0 || y >= LINES || x < 0 || x >= COLS) return;
@@ -328,16 +330,23 @@ static void draw_menus() {
 static void draw() {
     erase();
     origin_x = std::max(0, std::min(form_x, COLS - form_w));
-    origin_y = std::max(1, std::min(form_y, LINES - form_h));
+    origin_y = std::max(form_display_border_and_caption ? 1 : 0,
+                        std::min(form_y, LINES - form_h));
     int form_pair = style_pair(form_fg, form_bg, 1);
     int form_background = style_pair(form_fg, form_bg, 2);
     int border_extra = form_fg >= 0 && form_bg >= 0 ? 0 : A_BOLD;
-    box(origin_x, origin_y, form_w, form_h, form_pair, false, border_extra);
-    for (int row = 1; row < form_h - 1; ++row)
-        fill(origin_y + row, origin_x + 1, form_w - 2, form_background);
-    std::string title = " " + form_title + " ";
-    int title_x = origin_x + form_w / 2 - cells(title) / 2;
-    text(origin_y, title_x, std::max(0, form_w - 2), title, form_pair, false, border_extra);
+    if (form_display_border_and_caption) {
+        box(origin_x, origin_y, form_w, form_h, form_pair, false, border_extra);
+        for (int row = 1; row < form_h - 1; ++row)
+            fill(origin_y + row, origin_x + 1, form_w - 2, form_background);
+        std::string title = " " + form_title + " ";
+        int title_x = origin_x + form_w / 2 - cells(title) / 2;
+        text(origin_y, title_x, std::max(0, form_w - 2), title, form_pair, false, border_extra);
+    } else {
+        for (int row = 0; row < form_h; ++row)
+            for (int col = 0; col < form_w; ++col)
+                glyph(origin_y + row, origin_x + col, L' ', form_background);
+    }
     for (std::size_t i = 0; i < controls.size(); ++i) draw_control(controls[i], static_cast<int>(i));
     native_draw_hook();
     draw_menus();
@@ -353,7 +362,8 @@ static void draw() {
 }
 static int hit_control(int mx, int my) {
     int x = mx - origin_x, y = my - origin_y;
-    if (x <= 0 || x >= form_w - 1 || y <= 0 || y >= form_h - 1) return -1;
+    int inset = form_display_border_and_caption ? 1 : 0;
+    if (x < inset || x >= form_w - inset || y < inset || y >= form_h - inset) return -1;
     for (int i = static_cast<int>(controls.size()) - 1; i >= 0; --i) {
         const auto& c = controls[i];
         if (c.type != 14 && x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h) return i;
@@ -606,6 +616,7 @@ def generate_cpp(project):
         '@@FORM_TITLE@@': _cpp_string(project.get('title', 'Form')),
         '@@FORM_FG@@': str(_integer(project.get('fg_color'), -1)),
         '@@FORM_BG@@': str(_integer(project.get('custom_bg'), -1)),
+        '@@FORM_DISPLAY_BORDER_AND_CAPTION@@': 'true' if project.get('display_border_and_caption', True) else 'false',
         '@@CONTROLS@@': controls,
         '@@CONTROL_NAMES@@': ', '.join(_cpp_string(item.get('name_id', '')) for item in project.get('controls', [])),
         '@@MENUS@@': menus,
