@@ -1308,6 +1308,8 @@ def main(stdscr):
         run_globals_dict['msgbox'] = _msgbox
         run_globals_dict['load_form'] = trigger_load_form
         run_globals_dict['END'] = _ide_end
+        project_file = CURRENT_PROJECT_FILE or args.run or args.design_file
+        run_globals_dict['PROJECT_DIR'] = os.path.dirname(os.path.abspath(project_file)) if project_file else os.getcwd()
         
         current_time_ms = time.time() * 1000
         

@@ -23,12 +23,12 @@ def _fingerprint(project):
 
 # Fingerprint covers the form and every control/menu callback.  It prevents a
 # changed Python implementation from silently receiving an outdated C++ port.
-PHONE_SHELL_FINGERPRINT = '8ed4774af18c2cb530575b5753ffd134de1bf716495691c2b0af09567c5ea5be'
+PHONE_SHELL_FINGERPRINT = 'decd002c5ed0f64ad01de2c72d00a5d8947cca9ad93fc3e48f7a96164f59cc43'
 
 
 def is_phone_shell(project):
     names = {item.get('name_id') for item in project.get('controls', [])}
-    return (len(names) == 53 and {'txt_shell', 'txt_command', 'btn_keyboard_toggle',
+    return (len(names) == 54 and {'txt_shell', 'txt_command', 'btn_home', 'btn_keyboard_toggle',
                                   'btn_cand_0', 'btn_symbols', 'key_31'} <= names and
             _fingerprint(project) == PHONE_SHELL_FINGERPRINT)
 
@@ -54,6 +54,7 @@ PHONE_CPP = r'''
 #include <chrono>
 #include <cctype>
 #include <cstdio>
+#include <filesystem>
 #include <map>
 #include <stdexcept>
 
@@ -261,7 +262,9 @@ public:
         auto& shell = c("txt_shell");
         auto& input = c("txt_command");
         shell.x = input.x = 0;
-        shell.y = 0;
+        auto& home = c("btn_home");
+        home.x = 0; home.y = 0; home.w = std::min(10, content_w); home.h = 1;
+        shell.y = 1;
         shell.w = input.w = content_w;
 
         auto place = [&](std::vector<Control*> buttons, int y) {
@@ -280,15 +283,15 @@ public:
         int shell_h, candidate_y, mode_y = 0, toggle_y = 0;
         if (keyboard_visible) {
             mode_y = form_h - (key_rows + 3) * button_h;
-            shell_h = std::max(1, mode_y - 1 - candidate_h * candidates);
+            shell_h = std::max(1, mode_y - shell.y - 1 - candidate_h * candidates);
             candidate_y = mode_y - candidate_h;
         } else {
             toggle_y = form_h - button_h;
-            shell_h = std::max(1, toggle_y - 1 - candidate_h * candidates);
+            shell_h = std::max(1, toggle_y - shell.y - 1 - candidate_h * candidates);
             candidate_y = toggle_y - candidate_h;
         }
         shell.h = shell_h;
-        input.y = shell_h;
+        input.y = shell.y + shell_h;
         if (started && (terminal.rows != shell_h || terminal.cols != shell_w)) {
             terminal.resize(shell_w, shell_h);
             pty.resize(shell_w, shell_h);
@@ -389,6 +392,14 @@ public:
         started = pty.start(terminal.cols, terminal.rows);
         if (!started) terminal.feed(L"[Shell could not start]\n");
     }
+    void handle_terminal_commands() {
+        for (const auto& command : terminal.osc_messages)
+            if (command == "777;rad-tui;hide-keyboard" && keyboard_visible) {
+                keyboard_visible = false;
+                layout();
+            }
+        terminal.osc_messages.clear();
+    }
     void tick() {
         winsize size{};
         if (ioctl(STDIN_FILENO, TIOCGWINSZ, &size) == 0 && size.ws_row && size.ws_col &&
@@ -401,7 +412,10 @@ public:
             escape();
         }
         std::wstring output = pty.poll();
-        if (!output.empty()) terminal.feed(output, pty.master);
+        if (!output.empty()) {
+            terminal.feed(output, pty.master);
+            handle_terminal_commands();
+        }
         if (pty.exited() && !shell_exit_reported) {
             terminal.feed(L"\n[Shell exited]\n"); shell_exit_reported = true;
         }
@@ -424,8 +438,45 @@ public:
         }
         if (x >= 0 && x < COLS && y >= 0 && y < LINES) { curs_set(1); move(y, x); }
     }
+    static std::string shell_quote(const std::string& value) {
+        std::string result = "'";
+        for (char ch : value) result += ch == '\'' ? "'\\''" : std::string(1, ch);
+        return result + "'";
+    }
+    static std::filesystem::path desktop_root() {
+        char executable[4096];
+        ssize_t size = readlink("/proc/self/exe", executable, sizeof(executable) - 1);
+        std::filesystem::path directory = size > 0
+            ? std::filesystem::path(std::string(executable, static_cast<std::size_t>(size))).parent_path()
+            : std::filesystem::current_path();
+        for (const auto& candidate : {directory, directory.parent_path(), std::filesystem::current_path()})
+            if (std::filesystem::is_regular_file(candidate / "DT")) return candidate;
+        return directory.parent_path();
+    }
+    void home() {
+        std::vector<pid_t> groups;
+        if (pty.master >= 0) groups.push_back(tcgetpgrp(pty.master));
+        if (pty.child > 0) groups.push_back(getpgid(pty.child));
+        for (pid_t group : groups)
+            if (group > 0 && group != getpgrp()) kill(-group, SIGTERM);
+        if (!groups.empty()) usleep(50000);
+        for (pid_t group : groups)
+            if (group > 0 && group != getpgrp()) kill(-group, SIGKILL);
+        pty.stop();
+        started = false;
+        shell_exit_reported = false;
+        keyboard_visible = false;
+        candidate_options.clear(); candidate_index = 0;
+        command_set("");
+        layout();
+        terminal = NativeTerminal(std::max(1, c("txt_shell").w - 1), c("txt_shell").h);
+        started = pty.start(terminal.cols, terminal.rows);
+        if (!started) terminal.feed(L"[Shell could not start]\n");
+        else pty.send("cd -- " + shell_quote(desktop_root().string()) + " && ./DT\r");
+    }
     void click(const std::string& name) {
-        if (name == "btn_abc") set_mode("ABC");
+        if (name == "btn_home") home();
+        else if (name == "btn_abc") set_mode("ABC");
         else if (name == "btn_num") set_mode("123");
         else if (name == "btn_kana") set_mode("かな");
         else if (name == "btn_rom") set_mode("ROM");

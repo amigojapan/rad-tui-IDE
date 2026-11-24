@@ -83,9 +83,10 @@ static std::vector<Control> controls = {
     {11, 93, 5, 3, 3, "\x45\x6e\x74", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
     {16, 93, 5, 3, 3, "\x54\x61\x62", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
     {21, 93, 5, 3, 3, "\x45\x73\x63", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
-    {26, 93, 5, 3, 3, "\x53\x59\x4d", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}}
+    {26, 93, 5, 3, 3, "\x53\x59\x4d", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
+    {0, 0, 10, 1, 3, "\xe2\x8c\x82\x20\x48\x6f\x6d\x65", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}}
 };
-static std::vector<std::string> control_names = {"\x74\x78\x74\x5f\x73\x68\x65\x6c\x6c", "\x74\x78\x74\x5f\x63\x6f\x6d\x6d\x61\x6e\x64", "\x73\x68\x65\x6c\x6c\x5f\x74\x69\x6d\x65\x72", "\x62\x74\x6e\x5f\x63\x61\x6e\x64\x5f\x30", "\x62\x74\x6e\x5f\x63\x61\x6e\x64\x5f\x31", "\x62\x74\x6e\x5f\x63\x61\x6e\x64\x5f\x32", "\x62\x74\x6e\x5f\x61\x62\x63", "\x62\x74\x6e\x5f\x6e\x75\x6d", "\x62\x74\x6e\x5f\x6b\x61\x6e\x61", "\x62\x74\x6e\x5f\x72\x6f\x6d", "\x62\x74\x6e\x5f\x6e\x61\x76", "\x62\x74\x6e\x5f\x63\x74\x72\x6c", "\x62\x74\x6e\x5f\x73\x68\x69\x66\x74", "\x62\x74\x6e\x5f\x61\x6c\x74", "\x62\x74\x6e\x5f\x6b\x65\x79\x62\x6f\x61\x72\x64\x5f\x74\x6f\x67\x67\x6c\x65", "\x6b\x65\x79\x5f\x30\x30", "\x6b\x65\x79\x5f\x30\x31", "\x6b\x65\x79\x5f\x30\x32", "\x6b\x65\x79\x5f\x30\x33", "\x6b\x65\x79\x5f\x30\x34", "\x6b\x65\x79\x5f\x30\x35", "\x6b\x65\x79\x5f\x30\x36", "\x6b\x65\x79\x5f\x30\x37", "\x6b\x65\x79\x5f\x30\x38", "\x6b\x65\x79\x5f\x30\x39", "\x6b\x65\x79\x5f\x31\x30", "\x6b\x65\x79\x5f\x31\x31", "\x6b\x65\x79\x5f\x31\x32", "\x6b\x65\x79\x5f\x31\x33", "\x6b\x65\x79\x5f\x31\x34", "\x6b\x65\x79\x5f\x31\x35", "\x6b\x65\x79\x5f\x31\x36", "\x6b\x65\x79\x5f\x31\x37", "\x6b\x65\x79\x5f\x31\x38", "\x6b\x65\x79\x5f\x31\x39", "\x6b\x65\x79\x5f\x32\x30", "\x6b\x65\x79\x5f\x32\x31", "\x6b\x65\x79\x5f\x32\x32", "\x6b\x65\x79\x5f\x32\x33", "\x6b\x65\x79\x5f\x32\x34", "\x6b\x65\x79\x5f\x32\x35", "\x6b\x65\x79\x5f\x32\x36", "\x6b\x65\x79\x5f\x32\x37", "\x6b\x65\x79\x5f\x32\x38", "\x6b\x65\x79\x5f\x32\x39", "\x6b\x65\x79\x5f\x33\x30", "\x6b\x65\x79\x5f\x33\x31", "\x62\x74\x6e\x5f\x73\x70\x61\x63\x65", "\x62\x74\x6e\x5f\x62\x61\x63\x6b", "\x62\x74\x6e\x5f\x65\x6e\x74\x65\x72", "\x62\x74\x6e\x5f\x74\x61\x62", "\x62\x74\x6e\x5f\x65\x73\x63", "\x62\x74\x6e\x5f\x73\x79\x6d\x62\x6f\x6c\x73"};
+static std::vector<std::string> control_names = {"\x74\x78\x74\x5f\x73\x68\x65\x6c\x6c", "\x74\x78\x74\x5f\x63\x6f\x6d\x6d\x61\x6e\x64", "\x73\x68\x65\x6c\x6c\x5f\x74\x69\x6d\x65\x72", "\x62\x74\x6e\x5f\x63\x61\x6e\x64\x5f\x30", "\x62\x74\x6e\x5f\x63\x61\x6e\x64\x5f\x31", "\x62\x74\x6e\x5f\x63\x61\x6e\x64\x5f\x32", "\x62\x74\x6e\x5f\x61\x62\x63", "\x62\x74\x6e\x5f\x6e\x75\x6d", "\x62\x74\x6e\x5f\x6b\x61\x6e\x61", "\x62\x74\x6e\x5f\x72\x6f\x6d", "\x62\x74\x6e\x5f\x6e\x61\x76", "\x62\x74\x6e\x5f\x63\x74\x72\x6c", "\x62\x74\x6e\x5f\x73\x68\x69\x66\x74", "\x62\x74\x6e\x5f\x61\x6c\x74", "\x62\x74\x6e\x5f\x6b\x65\x79\x62\x6f\x61\x72\x64\x5f\x74\x6f\x67\x67\x6c\x65", "\x6b\x65\x79\x5f\x30\x30", "\x6b\x65\x79\x5f\x30\x31", "\x6b\x65\x79\x5f\x30\x32", "\x6b\x65\x79\x5f\x30\x33", "\x6b\x65\x79\x5f\x30\x34", "\x6b\x65\x79\x5f\x30\x35", "\x6b\x65\x79\x5f\x30\x36", "\x6b\x65\x79\x5f\x30\x37", "\x6b\x65\x79\x5f\x30\x38", "\x6b\x65\x79\x5f\x30\x39", "\x6b\x65\x79\x5f\x31\x30", "\x6b\x65\x79\x5f\x31\x31", "\x6b\x65\x79\x5f\x31\x32", "\x6b\x65\x79\x5f\x31\x33", "\x6b\x65\x79\x5f\x31\x34", "\x6b\x65\x79\x5f\x31\x35", "\x6b\x65\x79\x5f\x31\x36", "\x6b\x65\x79\x5f\x31\x37", "\x6b\x65\x79\x5f\x31\x38", "\x6b\x65\x79\x5f\x31\x39", "\x6b\x65\x79\x5f\x32\x30", "\x6b\x65\x79\x5f\x32\x31", "\x6b\x65\x79\x5f\x32\x32", "\x6b\x65\x79\x5f\x32\x33", "\x6b\x65\x79\x5f\x32\x34", "\x6b\x65\x79\x5f\x32\x35", "\x6b\x65\x79\x5f\x32\x36", "\x6b\x65\x79\x5f\x32\x37", "\x6b\x65\x79\x5f\x32\x38", "\x6b\x65\x79\x5f\x32\x39", "\x6b\x65\x79\x5f\x33\x30", "\x6b\x65\x79\x5f\x33\x31", "\x62\x74\x6e\x5f\x73\x70\x61\x63\x65", "\x62\x74\x6e\x5f\x62\x61\x63\x6b", "\x62\x74\x6e\x5f\x65\x6e\x74\x65\x72", "\x62\x74\x6e\x5f\x74\x61\x62", "\x62\x74\x6e\x5f\x65\x73\x63", "\x62\x74\x6e\x5f\x73\x79\x6d\x62\x6f\x6c\x73", "\x62\x74\x6e\x5f\x68\x6f\x6d\x65"};
 static std::vector<Menu> menus = {};
 static int focused = -1;
 static int pressed_control = -1;
@@ -498,7 +499,8 @@ public:
     std::deque<std::vector<NativeCell>> history;
     int saved_x = 0, saved_y = 0;
     int state = 0;
-    std::string params;
+    std::string params, osc_buffer;
+    std::vector<std::string> osc_messages;
 
     explicit NativeTerminal(int width = 30, int height = 20)
         : cols(width), rows(std::max(1, height)), bottom(std::max(1, height) - 1) {
@@ -715,13 +717,22 @@ public:
                 else if (params.size() < 80 && ch <= 127) params.push_back(static_cast<char>(ch));
                 continue;
             }
-            if (state == 3) { if (ch == 7) state = 0; else if (ch == 27) state = 4; continue; }
-            if (state == 4) { state = ch == L'\\' ? 0 : 3; continue; }
+            if (state == 3) {
+                if (ch == 7) { osc_messages.push_back(osc_buffer); osc_buffer.clear(); state = 0; }
+                else if (ch == 27) state = 4;
+                else if (ch <= 127 && osc_buffer.size() < 128) osc_buffer.push_back(static_cast<char>(ch));
+                continue;
+            }
+            if (state == 4) {
+                if (ch == L'\\') { osc_messages.push_back(osc_buffer); osc_buffer.clear(); state = 0; }
+                else state = 3;
+                continue;
+            }
             if (state == 5) { graphics = ch == L'0'; state = 0; continue; }
             if (state == 1) {
                 state = 0;
                 if (ch == L'[') { state = 2; params.clear(); }
-                else if (ch == L']') state = 3;
+                else if (ch == L']') { state = 3; osc_buffer.clear(); }
                 else if (ch == L'(' || ch == L')') state = 5;
                 else if (ch == L'7') { saved_x = x; saved_y = y; }
                 else if (ch == L'8') { x = saved_x; y = saved_y; }
@@ -808,6 +819,8 @@ public:
     std::string pending_utf8;
 
     bool start(int cols, int rows) {
+        child_exited = false;
+        pending_utf8.clear();
         winsize size{};
         size.ws_col = static_cast<unsigned short>(cols);
         size.ws_row = static_cast<unsigned short>(rows);
@@ -895,6 +908,7 @@ public:
 #include <chrono>
 #include <cctype>
 #include <cstdio>
+#include <filesystem>
 #include <map>
 #include <stdexcept>
 
@@ -1184,7 +1198,9 @@ public:
         auto& shell = c("txt_shell");
         auto& input = c("txt_command");
         shell.x = input.x = 0;
-        shell.y = 0;
+        auto& home = c("btn_home");
+        home.x = 0; home.y = 0; home.w = std::min(10, content_w); home.h = 1;
+        shell.y = 1;
         shell.w = input.w = content_w;
 
         auto place = [&](std::vector<Control*> buttons, int y) {
@@ -1203,15 +1219,15 @@ public:
         int shell_h, candidate_y, mode_y = 0, toggle_y = 0;
         if (keyboard_visible) {
             mode_y = form_h - (key_rows + 3) * button_h;
-            shell_h = std::max(1, mode_y - 1 - candidate_h * candidates);
+            shell_h = std::max(1, mode_y - shell.y - 1 - candidate_h * candidates);
             candidate_y = mode_y - candidate_h;
         } else {
             toggle_y = form_h - button_h;
-            shell_h = std::max(1, toggle_y - 1 - candidate_h * candidates);
+            shell_h = std::max(1, toggle_y - shell.y - 1 - candidate_h * candidates);
             candidate_y = toggle_y - candidate_h;
         }
         shell.h = shell_h;
-        input.y = shell_h;
+        input.y = shell.y + shell_h;
         if (started && (terminal.rows != shell_h || terminal.cols != shell_w)) {
             terminal.resize(shell_w, shell_h);
             pty.resize(shell_w, shell_h);
@@ -1312,6 +1328,14 @@ public:
         started = pty.start(terminal.cols, terminal.rows);
         if (!started) terminal.feed(L"[Shell could not start]\n");
     }
+    void handle_terminal_commands() {
+        for (const auto& command : terminal.osc_messages)
+            if (command == "777;rad-tui;hide-keyboard" && keyboard_visible) {
+                keyboard_visible = false;
+                layout();
+            }
+        terminal.osc_messages.clear();
+    }
     void tick() {
         winsize size{};
         if (ioctl(STDIN_FILENO, TIOCGWINSZ, &size) == 0 && size.ws_row && size.ws_col &&
@@ -1324,7 +1348,10 @@ public:
             escape();
         }
         std::wstring output = pty.poll();
-        if (!output.empty()) terminal.feed(output, pty.master);
+        if (!output.empty()) {
+            terminal.feed(output, pty.master);
+            handle_terminal_commands();
+        }
         if (pty.exited() && !shell_exit_reported) {
             terminal.feed(L"\n[Shell exited]\n"); shell_exit_reported = true;
         }
@@ -1347,8 +1374,45 @@ public:
         }
         if (x >= 0 && x < COLS && y >= 0 && y < LINES) { curs_set(1); move(y, x); }
     }
+    static std::string shell_quote(const std::string& value) {
+        std::string result = "'";
+        for (char ch : value) result += ch == '\'' ? "'\\''" : std::string(1, ch);
+        return result + "'";
+    }
+    static std::filesystem::path desktop_root() {
+        char executable[4096];
+        ssize_t size = readlink("/proc/self/exe", executable, sizeof(executable) - 1);
+        std::filesystem::path directory = size > 0
+            ? std::filesystem::path(std::string(executable, static_cast<std::size_t>(size))).parent_path()
+            : std::filesystem::current_path();
+        for (const auto& candidate : {directory, directory.parent_path(), std::filesystem::current_path()})
+            if (std::filesystem::is_regular_file(candidate / "DT")) return candidate;
+        return directory.parent_path();
+    }
+    void home() {
+        std::vector<pid_t> groups;
+        if (pty.master >= 0) groups.push_back(tcgetpgrp(pty.master));
+        if (pty.child > 0) groups.push_back(getpgid(pty.child));
+        for (pid_t group : groups)
+            if (group > 0 && group != getpgrp()) kill(-group, SIGTERM);
+        if (!groups.empty()) usleep(50000);
+        for (pid_t group : groups)
+            if (group > 0 && group != getpgrp()) kill(-group, SIGKILL);
+        pty.stop();
+        started = false;
+        shell_exit_reported = false;
+        keyboard_visible = false;
+        candidate_options.clear(); candidate_index = 0;
+        command_set("");
+        layout();
+        terminal = NativeTerminal(std::max(1, c("txt_shell").w - 1), c("txt_shell").h);
+        started = pty.start(terminal.cols, terminal.rows);
+        if (!started) terminal.feed(L"[Shell could not start]\n");
+        else pty.send("cd -- " + shell_quote(desktop_root().string()) + " && ./DT\r");
+    }
     void click(const std::string& name) {
-        if (name == "btn_abc") set_mode("ABC");
+        if (name == "btn_home") home();
+        else if (name == "btn_abc") set_mode("ABC");
         else if (name == "btn_num") set_mode("123");
         else if (name == "btn_kana") set_mode("かな");
         else if (name == "btn_rom") set_mode("ROM");

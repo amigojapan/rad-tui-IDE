@@ -1,0 +1,40 @@
+{
+  "x": 17,
+  "y": 1,
+  "w": 41,
+  "h": 18,
+  "title": "Form 1",
+  "name_id": "Form1",
+  "pinned_topmost": false,
+  "resizable": true,
+  "menus": [
+    {
+      "label": "top",
+      "name": "top",
+      "code": "def top_clicked():\n    pass\n",
+      "sub": [
+        {
+          "label": "sub1",
+          "name": "sub1",
+          "code": "def sub1_clicked():\n    pass\n",
+          "sub": [
+            {
+              "label": "subsub1",
+              "name": "subsub1",
+              "code": "def subsub1_clicked():\n    msgbox(\"hello form sub sub menu 1!\")\n",
+              "sub": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "top2",
+      "name": "top2",
+      "code": "def top2_clicked():\n    pass\n",
+      "sub": []
+    }
+  ],
+  "controls": [],
+  "code": ""
+}

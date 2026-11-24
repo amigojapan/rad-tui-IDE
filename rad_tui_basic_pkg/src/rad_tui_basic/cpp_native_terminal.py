@@ -30,7 +30,8 @@ public:
     std::deque<std::vector<NativeCell>> history;
     int saved_x = 0, saved_y = 0;
     int state = 0;
-    std::string params;
+    std::string params, osc_buffer;
+    std::vector<std::string> osc_messages;
 
     explicit NativeTerminal(int width = 30, int height = 20)
         : cols(width), rows(std::max(1, height)), bottom(std::max(1, height) - 1) {
@@ -247,13 +248,22 @@ public:
                 else if (params.size() < 80 && ch <= 127) params.push_back(static_cast<char>(ch));
                 continue;
             }
-            if (state == 3) { if (ch == 7) state = 0; else if (ch == 27) state = 4; continue; }
-            if (state == 4) { state = ch == L'\\' ? 0 : 3; continue; }
+            if (state == 3) {
+                if (ch == 7) { osc_messages.push_back(osc_buffer); osc_buffer.clear(); state = 0; }
+                else if (ch == 27) state = 4;
+                else if (ch <= 127 && osc_buffer.size() < 128) osc_buffer.push_back(static_cast<char>(ch));
+                continue;
+            }
+            if (state == 4) {
+                if (ch == L'\\') { osc_messages.push_back(osc_buffer); osc_buffer.clear(); state = 0; }
+                else state = 3;
+                continue;
+            }
             if (state == 5) { graphics = ch == L'0'; state = 0; continue; }
             if (state == 1) {
                 state = 0;
                 if (ch == L'[') { state = 2; params.clear(); }
-                else if (ch == L']') state = 3;
+                else if (ch == L']') { state = 3; osc_buffer.clear(); }
                 else if (ch == L'(' || ch == L')') state = 5;
                 else if (ch == L'7') { saved_x = x; saved_y = y; }
                 else if (ch == L'8') { x = saved_x; y = saved_y; }
@@ -340,6 +350,8 @@ public:
     std::string pending_utf8;
 
     bool start(int cols, int rows) {
+        child_exited = false;
+        pending_utf8.clear();
         winsize size{};
         size.ws_col = static_cast<unsigned short>(cols);
         size.ws_row = static_cast<unsigned short>(rows);

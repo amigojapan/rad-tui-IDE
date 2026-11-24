@@ -1,0 +1,88 @@
+{
+  "x": 0,
+  "y": 1,
+  "w": 91,
+  "h": 29,
+  "title": "Tsukino Editor",
+  "name_id": "Form1",
+  "pinned_topmost": true,
+  "resizable": true,
+  "hidden": false,
+  "menus": [
+    {
+      "label": "File",
+      "name": "mnu_file",
+      "code": "def mnu_file_clicked():\n    pass\n",
+      "sub": [
+        {
+          "label": "Load...",
+          "name": "mnu_file_load",
+          "code": "def mnu_file_load_clicked():\n    import sys\n    sys._file_dialogue_mode = 'load'\n    load_form('filedialogue.json')\n",
+          "sub": []
+        },
+        {
+          "label": "Save",
+          "name": "mnu_file_save",
+          "code": "def mnu_file_save_clicked():\n    import sys\n    filename = getattr(sys, '_shared_filename', 'untitled.py')\n    try:\n        with open(filename, 'w') as f:\n            f.write(txt_editor.caption)\n        msgbox(f'Saved successfully to {filename}')\n    except Exception as e:\n        msgbox(f'Save Error: {e}')\n",
+          "sub": []
+        },
+        {
+          "label": "Save As...",
+          "name": "mnu_file_save_as",
+          "code": "def mnu_file_save_as_clicked():\n    import sys\n    sys._shared_editor_text = txt_editor.caption\n    sys._file_dialogue_mode = 'save'\n    load_form('filedialogue.json')\n",
+          "sub": []
+        },
+        {
+          "label": "Quit",
+          "name": "mnu_file_quit",
+          "code": "def mnu_file_quit_clicked():\n    import sys\n    sys.exit(0)\n",
+          "sub": []
+        }
+      ]
+    },
+    {
+      "label": "Selection",
+      "name": "mnu_selection",
+      "code": "def mnu_selection_clicked():\n    pass\n",
+      "sub": [
+        {
+          "label": "Comment Lines",
+          "name": "mnu_selection_comment",
+          "code": "def mnu_selection_comment_clicked():\n    text = txt_editor.caption\n    lines = text.splitlines(keepends=True)\n    sel_start, sel_end = None, None\n    try:\n        global start_y\n        global end_y\n        msgbox('start_y:'+str(start_y)+' end_y:'+str(end_y))\n        sel_start, sel_end = start_y,  end_y\n    except Exception:\n        msgbox('txt_editor.selection is empty')\n    if sel_start is None:\n        try:\n            msgbox('sel_start is None:')\n        except Exception:\n            pass\n    if sel_start is None:\n        msgbox('here! No selection found.')\n        return\n    def get_idx(pos):\n        if isinstance(pos, int): return pos\n        try:\n            if hasattr(pos, 'row'): r, c = pos.row, pos.col\n            else: r, c = pos[0], pos[1]\n            return sum(len(lines[i]) for i in range(min(r, len(lines)))) + c\n        except Exception: return 0\n    s_idx = get_idx(sel_start)\n    e_idx = get_idx(sel_end)\n    if s_idx > e_idx:\n        s_idx, e_idx = e_idx, s_idx\n    if s_idx == e_idx:\n        msgbox('Please highlight text.')\n        return\n    new_lines = []\n    curr_pos = 0\n    for line in lines:\n        line_start = curr_pos\n        line_end = curr_pos + len(line)\n        curr_pos = line_end\n        if line_end > s_idx and line_start < e_idx:\n            if line.strip() and not line.lstrip().startswith('#'):\n                indent = line[:len(line) - len(line.lstrip())]\n                new_lines.append(indent + '#' + line.lstrip())\n            else:\n                new_lines.append(line)\n        else:\n            new_lines.append(line)\n    txt_editor.caption = ''.join(new_lines)\n",
+          "sub": []
+        },
+        {
+          "label": "Uncomment Lines",
+          "name": "mnu_selection_uncomment",
+          "code": "def mnu_selection_uncomment_clicked():\n    text = txt_editor.caption\n    lines = text.splitlines(keepends=True)\n    sel_start, sel_end = None, None\n    try:\n        sel_start, sel_end = txt_editor.selection\n    except Exception:\n        pass\n    if sel_start is None:\n        try:\n            sel_start = txt_editor.selection_start\n            sel_end = getattr(txt_editor, 'selection_end', sel_start)\n        except Exception:\n            pass\n    if sel_start is None:\n        msgbox('No selection found.')\n        return\n    def get_idx(pos):\n        if isinstance(pos, int): return pos\n        try:\n            if hasattr(pos, 'row'): r, c = pos.row, pos.col\n            else: r, c = pos[0], pos[1]\n            return sum(len(lines[i]) for i in range(min(r, len(lines)))) + c\n        except Exception: return 0\n    s_idx = get_idx(sel_start)\n    e_idx = get_idx(sel_end)\n    if s_idx > e_idx:\n        s_idx, e_idx = e_idx, s_idx\n    if s_idx == e_idx:\n        msgbox('Please highlight text.')\n        return\n    new_lines = []\n    curr_pos = 0\n    for line in lines:\n        line_start = curr_pos\n        line_end = curr_pos + len(line)\n        curr_pos = line_end\n        if line_end > s_idx and line_start < e_idx:\n            stripped = line.lstrip()\n            if stripped.startswith('#'):\n                indent = line[:len(line) - len(stripped)]\n                content = stripped[1:]\n                if content.startswith(' '):\n                    content = content[1:]\n                new_lines.append(indent + content)\n            else:\n                new_lines.append(line)\n        else:\n            new_lines.append(line)\n    txt_editor.caption = ''.join(new_lines)\n",
+          "sub": []
+        }
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "x": 1,
+      "y": 1,
+      "w": 89,
+      "h": 27,
+      "tool_type": 13,
+      "name_id": "txt_editor",
+      "caption": "",
+      "code": "def on_change_txt_editor():\n    pass\n\ndef on_right_click_txt_editor():\n    pass\n\ndef on_selection_start_txt_editor():\n    global start_y\n    start_y=mouse.y\n    print(\"y:\"+str(start_y))\n\ndef on_selection_end_txt_editor():\n    global end_y\n    end_y=mouse.y\n    print(\"y:\"+str(end_y))\n",
+      "value": false,
+      "items": [],
+      "list_index": 0,
+      "scroll_offset": 0,
+      "interval": 1000,
+      "bg_color": 12,
+      "h_scroll": true,
+      "v_scroll": true,
+      "syntax_hl": true,
+      "editable": true,
+      "min_val": 0,
+      "max_val": 100
+    }
+  ],
+  "code": "def on_form_load():\n    import sys\n    if len(sys.argv) >= 4 and sys.argv[1] == '-run':\n        filepath = sys.argv[3]\n        try:\n            with open(filepath, 'r') as f:\n                txt_editor.caption = f.read()\n            sys._shared_filename = filepath\n        except Exception as e:\n            msgbox(f'Error opening {filepath}:\\n{e}')\n    elif hasattr(sys, '_shared_load_file'):\n        try:\n            with open(sys._shared_load_file, 'r') as f:\n                txt_editor.caption = f.read()\n            sys._shared_filename = sys._shared_load_file\n            del sys._shared_load_file\n        except Exception as e:\n            msgbox(f'Error loading file:\\n{e}')\n    elif hasattr(sys, '_shared_editor_text'):\n        txt_editor.caption = sys._shared_editor_text\n\ndef on_form_resize():\n    txt_editor.w = Form1.w - 2\n    txt_editor.h = Form1.h - 3\n"
+}

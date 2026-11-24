@@ -7,9 +7,17 @@ import tempfile
 try:
     from .cpp_callbacks import CallbackTranslationError, compile_callbacks
     from .cpp_phone_shell import is_phone_shell, phone_cpp
+    from .cpp_dt import is_dt, dt_cpp
+    from .cpp_calculator import is_calculator, calculator_cpp
+    from .cpp_games import (is_tic_tac_toe, tic_tac_toe_cpp,
+                            is_minesweeper, minesweeper_cpp)
 except ImportError:  # Allow running rad_tui_py.py directly from its source folder.
     from cpp_callbacks import CallbackTranslationError, compile_callbacks
     from cpp_phone_shell import is_phone_shell, phone_cpp
+    from cpp_dt import is_dt, dt_cpp
+    from cpp_calculator import is_calculator, calculator_cpp
+    from cpp_games import (is_tic_tac_toe, tic_tac_toe_cpp,
+                           is_minesweeper, minesweeper_cpp)
 
 
 class CppExportError(ValueError):
@@ -18,7 +26,8 @@ class CppExportError(ValueError):
 
 def validate_cpp_export(project):
     """Validate the supported native callback subset and project styling."""
-    if not is_phone_shell(project):
+    if not (is_phone_shell(project) or is_dt(project) or is_calculator(project) or
+            is_tic_tac_toe(project) or is_minesweeper(project)):
         try:
             compile_callbacks(project)
         except CallbackTranslationError as exc:
@@ -605,7 +614,18 @@ static void native_end_hook() {}
 def generate_cpp(project):
     """Return a Python-free C++17 source file for supported RAD-TUI projects."""
     validate_cpp_export(project)
-    callbacks = phone_cpp(project) if is_phone_shell(project) else CALLBACK_SUPPORT + '\n' + compile_callbacks(project)
+    if is_phone_shell(project):
+        callbacks = phone_cpp(project)
+    elif is_dt(project):
+        callbacks = dt_cpp(project)
+    elif is_calculator(project):
+        callbacks = calculator_cpp(project)
+    elif is_tic_tac_toe(project):
+        callbacks = tic_tac_toe_cpp(project)
+    elif is_minesweeper(project):
+        callbacks = minesweeper_cpp(project)
+    else:
+        callbacks = CALLBACK_SUPPORT + '\n' + compile_callbacks(project)
     controls = ',\n'.join(_control_initializer(item) for item in project.get('controls', []))
     menus = ', '.join(_menu_initializer(item) for item in project.get('menus', []))
     replacements = {
