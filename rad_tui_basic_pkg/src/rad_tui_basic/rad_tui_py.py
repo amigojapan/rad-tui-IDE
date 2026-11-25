@@ -19,6 +19,45 @@ except ImportError:  # Direct execution of this module as a script.
 
 LANG = 'en'
 
+_BASE_COLOR_PALETTE = (
+    (curses.COLOR_WHITE, curses.COLOR_BLUE), (curses.COLOR_BLACK, curses.COLOR_WHITE),
+    (curses.COLOR_WHITE, curses.COLOR_WHITE), (curses.COLOR_BLACK, curses.COLOR_CYAN),
+    (curses.COLOR_WHITE, curses.COLOR_BLACK), (curses.COLOR_CYAN, curses.COLOR_BLACK),
+    (curses.COLOR_BLACK, curses.COLOR_WHITE), (curses.COLOR_BLUE, curses.COLOR_WHITE),
+    (curses.COLOR_GREEN, curses.COLOR_WHITE), (curses.COLOR_RED, curses.COLOR_WHITE),
+    (curses.COLOR_MAGENTA, curses.COLOR_WHITE), (curses.COLOR_BLACK, curses.COLOR_WHITE),
+    (curses.COLOR_WHITE, curses.COLOR_BLUE), (curses.COLOR_BLACK, curses.COLOR_GREEN),
+    (curses.COLOR_WHITE, curses.COLOR_RED), (curses.COLOR_BLACK, curses.COLOR_CYAN),
+    (curses.COLOR_WHITE, curses.COLOR_MAGENTA),
+)
+
+
+def init_ide_color_pairs():
+    """Only initialize pair numbers supported by the current terminal."""
+    pair_limit = curses.COLOR_PAIRS
+    for index, (fg, bg) in enumerate(_BASE_COLOR_PALETTE, 1):
+        if index >= pair_limit:
+            break
+        curses.init_pair(index, fg, bg)
+    for bg in range(8):
+        for fg in range(8):
+            index = 20 + bg * 8 + fg
+            if index < pair_limit:
+                curses.init_pair(index, fg, bg)
+
+
+def ide_color_pair(fg, bg):
+    """Use the requested colors or a supported base pair on small palettes."""
+    fg, bg = fg % 8, bg % 8
+    index = 20 + bg * 8 + fg
+    if index < curses.COLOR_PAIRS:
+        return curses.color_pair(index)
+    for base_index, pair in enumerate(_BASE_COLOR_PALETTE, 1):
+        if pair == (fg, bg) and base_index < curses.COLOR_PAIRS:
+            return curses.color_pair(base_index)
+    fallback = {0: 5, 4: 1, 6: 4, 7: 2}.get(bg, 0)
+    return curses.color_pair(fallback if fallback < curses.COLOR_PAIRS else 0)
+
 I18N = {
     'en': {
         'toolbox_title': '-Tools-',
@@ -497,7 +536,7 @@ class Window:
         C_TEXTBOX, C_HANDLE = colors['textbox'], colors['handle']
 
         if self.fg_color >= 0 and self.custom_bg >= 0:
-            form_pair = curses.color_pair(20 + (self.custom_bg % 8) * 8 + (self.fg_color % 8))
+            form_pair = ide_color_pair(self.fg_color, self.custom_bg)
             C_BORDER = C_BG = form_pair
 
         if run_mode and not self.display_border_and_caption:
@@ -530,7 +569,7 @@ class Window:
 
             c_attr = C_TEXTBOX
             if getattr(c, 'fg_color', -1) >= 0 and getattr(c, 'custom_bg', -1) >= 0:
-                c_attr = curses.color_pair(20 + (c.custom_bg % 8) * 8 + (c.fg_color % 8))
+                c_attr = ide_color_pair(c.fg_color, c.custom_bg)
 
             if c.tool_type == 3: 
                 is_pressed = (i == pressed_ctrl)
@@ -1214,36 +1253,22 @@ def run_gui(stdscr):
     curses.mouseinterval(0) 
     print('\033[?1002h\033[?1006h', end='', flush=True)
 
-    for i, (fg, bg) in enumerate([
-        (curses.COLOR_WHITE, curses.COLOR_BLUE), (curses.COLOR_BLACK, curses.COLOR_WHITE),
-        (curses.COLOR_WHITE, curses.COLOR_WHITE), (curses.COLOR_BLACK, curses.COLOR_CYAN),
-        (curses.COLOR_WHITE, curses.COLOR_BLACK), (curses.COLOR_CYAN, curses.COLOR_BLACK),
-        (curses.COLOR_BLACK, curses.COLOR_WHITE), (curses.COLOR_BLUE, curses.COLOR_WHITE),
-        (curses.COLOR_GREEN, curses.COLOR_WHITE), (curses.COLOR_RED, curses.COLOR_WHITE),
-        (curses.COLOR_MAGENTA, curses.COLOR_WHITE), (curses.COLOR_BLACK, curses.COLOR_WHITE),
-        (curses.COLOR_WHITE, curses.COLOR_BLUE), (curses.COLOR_BLACK, curses.COLOR_GREEN),
-        (curses.COLOR_WHITE, curses.COLOR_RED), (curses.COLOR_BLACK, curses.COLOR_CYAN),
-        (curses.COLOR_WHITE, curses.COLOR_MAGENTA)
-    ], 1): curses.init_pair(i, fg, bg)
-    
-    for bg in range(8):
-        for fg in range(8):
-            curses.init_pair(20 + bg * 8 + fg, fg, bg)
+    init_ide_color_pairs()
 
     if getattr(sys, '_rad_dark_mode', False):
         C = {
-            'border': curses.color_pair(20 + 0*8 + 7) | curses.A_BOLD,
-            'bg': curses.color_pair(20 + 0*8 + 7),
-            'btn_face': curses.color_pair(20 + 0*8 + 7),
-            'btn_hl': curses.color_pair(20 + 7*8 + 0) | curses.A_BOLD,
-            'textbox': curses.color_pair(20 + 0*8 + 7),
-            'handle': curses.color_pair(20 + 4*8 + 7),
-            'active_tool': curses.color_pair(20 + 7*8 + 0) | curses.A_BOLD,
-            'prop_label': curses.color_pair(20 + 0*8 + 7),
-            'kw': curses.color_pair(20 + 0*8 + 6) | curses.A_BOLD,
-            'str': curses.color_pair(20 + 0*8 + 2),
-            'comment': curses.color_pair(20 + 0*8 + 4),
-            'num': curses.color_pair(20 + 0*8 + 5)
+            'border': ide_color_pair(7, 0) | curses.A_BOLD,
+            'bg': ide_color_pair(7, 0),
+            'btn_face': ide_color_pair(7, 0),
+            'btn_hl': ide_color_pair(0, 7) | curses.A_BOLD,
+            'textbox': ide_color_pair(7, 0),
+            'handle': ide_color_pair(7, 4),
+            'active_tool': ide_color_pair(0, 7) | curses.A_BOLD,
+            'prop_label': ide_color_pair(7, 0),
+            'kw': ide_color_pair(6, 0) | curses.A_BOLD,
+            'str': ide_color_pair(2, 0),
+            'comment': ide_color_pair(4, 0),
+            'num': ide_color_pair(5, 0)
         }
     else:
         C = {
