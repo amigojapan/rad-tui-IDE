@@ -1,4 +1,4 @@
-// Browser core for the phone shell demo. The calculator and game rules follow
+// Browser core for FutureShell. The calculator and game rules follow
 // the native exports in ../calc.cpp, ../tic-tac-toe.cpp, and ../ms.cpp.
 #include <algorithm>
 #include <array>
@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+#include "shell_catalog.h"
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #else
@@ -20,6 +22,78 @@
 
 namespace {
 std::string output;
+std::string shell_directory_name;
+std::string shell_output_text;
+std::string shell_target_name;
+int shell_action_code = 0; // 0: show output; 1: Home; 2: open app; 3: clear
+
+std::string trim(std::string value) {
+    const auto first = value.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) return "";
+    const auto last = value.find_last_not_of(" \t\r\n");
+    return value.substr(first, last - first + 1);
+}
+
+std::string shell_parent() {
+    const auto slash = shell_directory_name.rfind('/');
+    return slash == std::string::npos ? "" : shell_directory_name.substr(0, slash);
+}
+
+void run_shell_command(const std::string& command, const std::string& date) {
+    shell_output_text.clear();
+    shell_target_name.clear();
+    shell_action_code = 0;
+    if (command.empty()) return;
+    if (command == "./DT/DT.bin" || command == "DT" || command == "home") {
+        shell_action_code = 1;
+        return;
+    }
+    const auto space = command.find_first_of(" \t");
+    const std::string verb = command.substr(0, space);
+    const std::string arg = space == std::string::npos ? "" : trim(command.substr(space + 1));
+    if (verb == "bash" && arg == "--version")
+        shell_output_text = "Sample bash clone for futureshell web demo";
+    else if (verb == "help")
+        shell_output_text = "help ls pwd cd <folder> open <app> clear echo <text> date";
+    else if (verb == "pwd")
+        shell_output_text = "/phoneapps/DT/DTF" + (shell_directory_name.empty() ? "" : "/" + shell_directory_name);
+    else if (verb == "ls") {
+        for (const auto& entry : shell_entries) {
+            if (shell_directory_name != entry.parent) continue;
+            if (!shell_output_text.empty()) shell_output_text += "  ";
+            shell_output_text += std::string(entry.name) + (entry.folder ? "/" : ".bin");
+        }
+    } else if (verb == "cd") {
+        if (arg == "..") shell_directory_name = shell_parent();
+        else if (arg == "/") shell_directory_name.clear();
+        else {
+            bool found = false;
+            for (const auto& entry : shell_entries) {
+                if (entry.folder && shell_directory_name == entry.parent && arg == entry.name) {
+                    shell_directory_name = entry.path;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) { shell_output_text = "No such folder: " + arg; return; }
+        }
+        shell_output_text = "DTF" + (shell_directory_name.empty() ? "" : "/" + shell_directory_name);
+    } else if (verb == "echo") shell_output_text = arg;
+    else if (verb == "date") shell_output_text = date;
+    else if (verb == "clear") shell_action_code = 3;
+    else {
+        const std::string requested = verb == "open" ? arg : verb;
+        for (const auto& entry : shell_entries) {
+            if (entry.folder) continue;
+            if (requested == entry.name || requested == std::string(entry.name) + ".bin") {
+                shell_action_code = 2;
+                shell_target_name = entry.path;
+                return;
+            }
+        }
+        shell_output_text = "Command not found: " + command;
+    }
+}
 
 struct Calculator {
     std::string value = "0";
@@ -176,7 +250,22 @@ struct Minesweeper {
 }
 
 extern "C" {
-EMSCRIPTEN_KEEPALIVE const char* demo_version() { return "rad-tui-BASIC web demo 1"; }
+EMSCRIPTEN_KEEPALIVE const char* demo_version() { return "FutureShell WebAssembly 1"; }
+EMSCRIPTEN_KEEPALIVE const char* shell_boot() {
+    shell_directory_name.clear();
+    shell_output_text = "Welcome to FutureShell";
+    shell_target_name.clear();
+    shell_action_code = 0;
+    return shell_output_text.c_str();
+}
+EMSCRIPTEN_KEEPALIVE void shell_run(const char* command, const char* date, const char* directory) {
+    shell_directory_name = directory ? directory : "";
+    run_shell_command(trim(command ? command : ""), date ? date : "");
+}
+EMSCRIPTEN_KEEPALIVE const char* shell_output() { return shell_output_text.c_str(); }
+EMSCRIPTEN_KEEPALIVE int shell_action() { return shell_action_code; }
+EMSCRIPTEN_KEEPALIVE const char* shell_target() { return shell_target_name.c_str(); }
+EMSCRIPTEN_KEEPALIVE const char* shell_directory() { return shell_directory_name.c_str(); }
 EMSCRIPTEN_KEEPALIVE void calc_reset() { calculator.reset(); }
 EMSCRIPTEN_KEEPALIVE const char* calc_press(const char* key) {
     calculator.press(key ? key : "");

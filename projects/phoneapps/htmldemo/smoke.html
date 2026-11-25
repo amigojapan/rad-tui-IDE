@@ -1,8 +1,9 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Phone Shell terminal smoke check</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FutureShell terminal smoke check</title>
 <p id="result">WAITING</p>
-<iframe id="demo" src="index.html" title="Phone Shell demo" style="width:560px;height:900px"></iframe>
+<iframe id="demo" src="index.html" title="FutureShell demo" style="width:560px;height:900px"></iframe>
 <script>
 if (new URLSearchParams(location.search).has('mobile')) {
   document.getElementById('demo').style.width = '360px';
@@ -11,6 +12,10 @@ if (new URLSearchParams(location.search).has('mobile')) {
 if (new URLSearchParams(location.search).has('native')) {
   document.getElementById('demo').style.width = '350px';
   document.getElementById('demo').style.height = '730px';
+}
+if (new URLSearchParams(location.search).has('wide')) {
+  document.getElementById('demo').style.width = '1280px';
+  document.getElementById('demo').style.height = '800px';
 }
 let attempts = 0;
 const timer = setInterval(async () => {
@@ -50,9 +55,39 @@ const timer = setInterval(async () => {
   };
   const folder = entry;
   const app = entry;
-  const previousNote = d.defaultView.localStorage.getItem('rad-tui-demo-note');
+  const input = d.getElementById('terminalInput');
+  const shellCommand = command => {
+    input.value = command;
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));
+  };
   try {
-    check(canvas.dataset.screen === 'bash' && canvas.dataset.keyboard === 'visible', 'native shell startup');
+    const viewport = frame.contentWindow.visualViewport;
+    check(Math.abs(rect.width - (viewport?.width || frame.contentWindow.innerWidth)) <= 1 &&
+          Math.abs(rect.height - (viewport?.height || frame.contentWindow.innerHeight)) <= 1,
+      'FutureShell fills its browser container');
+    check(canvas.dataset.screen === 'bash' && canvas.dataset.keyboard === 'visible', 'FutureShell startup');
+    check(canvas.dataset.shellEngine === 'futureshell.wasm', 'FutureShell WebAssembly boots on page load');
+    check(canvas.getAttribute('aria-label').includes('Welcome to FutureShell') &&
+          canvas.getAttribute('aria-label').includes('Prompt dollar sign'), 'welcome and shell prompt');
+    check(d.activeElement === input, 'shell input focused on boot');
+    check(input.inputMode === 'none' && input.getAttribute('virtualkeyboardpolicy') === 'manual',
+      'browser software keyboard disabled while input stays focused');
+    const keyboardRows = Number(canvas.dataset.rows);
+    const keyHeight = keyboardRows >= 32 ? 3 : 1;
+    const keyboardLeft = Math.floor((cols - 30) / 2);
+    click(keyboardLeft + 1, keyboardRows - 4 * keyHeight + Math.floor(keyHeight / 2)); // q
+    check(input.value === 'q', 'FutureShell screen keyboard still types');
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    shellCommand('echo wasm-shell');
+    check(canvas.dataset.lastShellLine === 'wasm-shell', 'WebAssembly shell handles commands');
+    shellCommand('bash --version');
+    check(canvas.dataset.lastShellLine === 'Sample bash clone for futureshell web demo', 'Bash clone version response');
+    shellCommand('cd games');
+    check(canvas.dataset.folder === 'games', 'WebAssembly shell changes folders');
+    shellCommand('ls');
+    check(canvas.dataset.lastShellLine.includes('tic-tac-toe.bin'), 'WebAssembly shell reads DTF catalog');
     home();
     check(canvas.dataset.screen === 'DT' && canvas.dataset.folder === '' &&
           canvas.dataset.keyboard === 'hidden', 'Home opens DT and hides keyboard');
@@ -82,7 +117,6 @@ const timer = setInterval(async () => {
     app(0); // Future Browser
     check(canvas.dataset.screen === 'futurebrowser', 'Future Browser opens');
     click(5, 4); // txt_url
-    const input = d.getElementById('terminalInput');
     check(input.value === 'https://amjp.psy-k.org/futureshell/repo/webasm/tic-tac-toe.webasm.bin', 'default WebAssembly URL');
     input.value = d.defaultView.location.origin + '/missing.bin';
     input.dispatchEvent(new Event('input'));
@@ -103,22 +137,161 @@ const timer = setInterval(async () => {
     folder(2); // tools
     app(2); // nano
     check(canvas.dataset.screen === 'nano', 'Nano opens');
-    click(4, 6);
+    check(d.activeElement === input, 'Nano buffer focused when opened');
+    click(Math.floor(cols / 2), Number(canvas.dataset.rows) - 2); // show keyboard
+    check(canvas.dataset.keyboard === 'visible', 'Nano screen keyboard opens');
+    const nanoRows = Number(canvas.dataset.rows);
+    const modeY = keyRows => nanoRows - (keyRows + 3) * keyHeight + Math.floor(keyHeight / 2);
+    const romanKey = letter => {
+      const rows = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+      const row = rows.findIndex(value => value.includes(letter));
+      const index = rows[row].indexOf(letter);
+      const width = Math.floor(30 / rows[row].length);
+      const x = keyboardLeft + index * width + Math.min(index, 30 % rows[row].length) +
+        Math.floor((width + (index < 30 % rows[row].length ? 1 : 0)) / 2);
+      canvas.focus(); // a real Android tap moves focus off the hidden editor
+      click(x, nanoRows - 4 * keyHeight + row * keyHeight + Math.floor(keyHeight / 2));
+    };
+    click(keyboardLeft + 21, modeY(3)); // ROM
+    romanKey('k'); romanKey('a');
+    check(input.value === 'か', 'ROM keyboard converts ka to か');
+    check(canvas.dataset.nanoCursor === '0,2', 'Nano cursor follows a converted kana');
+    for (const key of 'shi')
+      input.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', {key, bubbles: true}));
+    check(input.value === 'かし', 'physical romaji keys convert shi to し');
+    check(canvas.dataset.nanoCursor === '0,4', 'Nano cursor follows physical romaji input');
+    click(keyboardLeft + 21, modeY(3)); // restart ROM composition
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    for (const key of 'tesuto') {
+      romanKey(key);
+      if ('ts'.includes(key)) click(keyboardLeft + 21, modeY(3)); // interrupted composition
+    }
+    check(input.value === 'てすと', `ROM screen keyboard converts tesuto to てすと (got ${JSON.stringify(input.value)})`);
+    click(keyboardLeft + 2, nanoRows - 2);
+    check(JSON.parse(canvas.dataset.candidateOptions).join(',') === '試験,てすと,テスト',
+      'ROM Space offers kanji, hiragana, and katakana for tesuto');
+    click(keyboardLeft + 12, nanoRows - 2);
+    check(input.value === '試験', 'ROM Enter commits the tesuto kanji synonym');
+    click(keyboardLeft + 21, modeY(3)); // restart ROM composition
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    for (const key of 'konnichiha') romanKey(key);
+    check(input.value === 'こんにちは', 'ROM keyboard converts a complete greeting');
+    check(canvas.dataset.nanoCursor === '0,10', 'Nano cursor follows the last Japanese character');
+    click(keyboardLeft + 12, nanoRows - 2); // newline in Nano
+    romanKey('a'); romanKey('i');
+    check(input.value === 'こんにちは\nあい' && canvas.dataset.nanoCursor === '1,4',
+      'ROM input and Nano cursor continue after a newline');
+    input.setSelectionRange(0, 0);
+    input.dispatchEvent(new Event('select'));
+    check(canvas.dataset.nanoCursor === '0,0', 'Nano cursor follows a moved text selection');
+    click(keyboardLeft + 21, modeY(3)); // restart ROM composition
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    for (const key of 'kai') romanKey(key);
+    click(keyboardLeft + 2, nanoRows - 2); // Space opens kanji candidates
+    check(JSON.parse(canvas.dataset.candidateOptions).slice(0, 4).join(',') === '会,回,階,貝',
+      'ROM Space shows native kanji candidates');
+    click(keyboardLeft + 2, nanoRows - 2); // Space selects next candidate
+    check(canvas.dataset.candidateIndex === '1', 'ROM Space cycles kanji candidates');
+    click(keyboardLeft + 12, nanoRows - 2); // Enter commits candidate
+    check(input.value === '回' && canvas.dataset.candidateIndex === '-1',
+      'ROM Enter commits selected kanji without a newline');
+    click(keyboardLeft + 21, modeY(3));
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    romanKey('a'); romanKey('i');
+    click(keyboardLeft + 2, nanoRows - 2);
+    click(keyboardLeft + 15, modeY(3) - keyHeight); // second visible candidate
+    check(input.value === '藍' && canvas.dataset.candidateIndex === '-1',
+      'tapping a kanji candidate commits it');
+    click(keyboardLeft + 21, modeY(3));
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    romanKey('k'); romanKey('a');
+    click(keyboardLeft + 2, nanoRows - 2);
+    click(keyboardLeft + 7, nanoRows - 2); // Backspace cancels conversion
+    check(input.value === 'か' && canvas.dataset.candidateIndex === '-1',
+      'ROM Backspace cancels kanji selection');
+    input.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', {key: ' ', bubbles: true}));
+    check(JSON.parse(canvas.dataset.candidateOptions).join(',') === 'か,カ',
+      'physical Space opens kana and katakana candidates');
+    input.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', {key: 'ArrowRight', bubbles: true}));
+    input.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));
+    check(input.value === 'カ' && canvas.dataset.candidateIndex === '-1',
+      'physical arrow and Enter select katakana');
+    click(keyboardLeft + 21, modeY(3)); // restart ROM composition
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    romanKey('k'); romanKey('a');
+    input.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', {key: 'Backspace', bubbles: true}));
+    check(input.value === 'k', 'ROM Backspace restores the unfinished syllable');
+    click(keyboardLeft + 15, modeY(3)); // かな
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    const kanaKey = (column, row) => click(keyboardLeft + column * 10 + 5,
+      nanoRows - 5 * keyHeight + row * keyHeight + Math.floor(keyHeight / 2));
+    for (const [index, expected] of Array.from('あいうえおあ').entries()) {
+      kanaKey(0, 0);
+      check(input.value === expected, `かな key cycles to ${expected} at tap ${index + 1}`);
+    }
+    for (const expected of 'かきくけこ') {
+      kanaKey(1, 0);
+      check(input.value === 'あ' + expected, `かな key cycles to ${expected}`);
+    }
+    kanaKey(0, 3); // voiced mark
+    check(input.value === 'あご', 'かな voiced mark changes こ to ご');
+    kanaKey(0, 0); kanaKey(2, 3); // small kana
+    check(input.value === 'あごぁ', 'かな small key changes あ to ぁ');
+    click(keyboardLeft + 15, modeY(4)); // restart かな composition
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    kanaKey(1, 0); kanaKey(0, 0); kanaKey(0, 0); // かい
+    click(keyboardLeft + 2, nanoRows - 2);
+    check(JSON.parse(canvas.dataset.candidateOptions)[0] === '会', 'かな Space shows kanji candidates');
+    click(keyboardLeft + 5, modeY(4) - keyHeight);
+    check(input.value === '会' && canvas.dataset.candidateIndex === '-1',
+      'かな candidate button commits kanji');
+    input.value = 'あ'.repeat(Math.floor((cols - 1) / 2) + 1);
+    input.setSelectionRange(input.value.length, input.value.length);
+    input.dispatchEvent(new Event('input'));
+    check(canvas.dataset.nanoCursor === '1,2', 'Nano wraps wide kana at the terminal edge');
+    input.value = 'あ\n'.repeat(50) + '終';
+    input.setSelectionRange(input.value.length, input.value.length);
+    input.dispatchEvent(new Event('input'));
+    check(canvas.dataset.nanoCursor === '50,2' && Number(canvas.dataset.nanoScroll) > 0,
+      'Nano scrolls to keep the cursor visible');
+    click(keyboardLeft + 3, modeY(4)); // ABC
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    click(keyboardLeft + 12, Number(canvas.dataset.rows) - 2); // Ent on screen keyboard
+    check(input.value === '\n' && input.selectionStart === 1,
+      'Nano screen keyboard Ent inserts a newline');
+    input.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', {key: 'x', ctrlKey: true, bubbles: true}));
+    check(canvas.dataset.screen === 'nano' && d.getElementById('status').textContent.includes('read-only buffer'),
+      'Nano tracks newline-only edits');
+    click(keyboardLeft + 26, Number(canvas.dataset.rows) - 14); // hide keyboard for Nano shortcuts
+    check(canvas.dataset.keyboard === 'hidden', 'Nano screen keyboard hides');
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
     input.value = 'ncurses demo note';
     input.dispatchEvent(new Event('input'));
     click(Math.floor((cols - 1) / 3) + 1, Number(canvas.dataset.rows) - 6); // ^O Write Out
-    check(d.defaultView.localStorage.getItem('rad-tui-demo-note') === 'ncurses demo note', 'Nano save');
+    check(d.getElementById('status').textContent.includes('read-only filesystem'), 'Nano rejects saving');
+    input.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', {key: 'x', ctrlKey: true, bubbles: true}));
+    check(canvas.dataset.screen === 'nano' && d.getElementById('status').textContent.includes('read-only buffer'),
+      'modified Nano buffer reports read-only error on Ctrl+X');
+    input.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', {key: 'x', ctrlKey: true, bubbles: true}));
+    check(canvas.dataset.screen === 'DT', 'second Ctrl+X discards modified buffer');
     home();
     folder(2);
     app(0); // bash
     check(canvas.dataset.screen === 'bash', 'Bash opens');
+    check(d.activeElement === input, 'shell input focused when reopened');
     click(Math.floor(cols / 2), Number(canvas.dataset.rows) - 2);
     check(canvas.dataset.keyboard === 'visible', 'screen keyboard');
-    result.textContent = 'PASS: ncurses canvas, DT, Tic Tac Toe, Calculator, Minesweeper, Future Browser, Nano, Bash, keyboard';
+    result.textContent = 'PASS: FutureShell WebAssembly boot and commands, DT, games, calculator, Future Browser, editor, keyboard';
   } catch (error) { result.textContent = 'FAIL: ' + error.message; }
-  finally {
-    if (previousNote === null) d.defaultView.localStorage.removeItem('rad-tui-demo-note');
-    else d.defaultView.localStorage.setItem('rad-tui-demo-note', previousNote);
-  }
 }, 50);
 </script>

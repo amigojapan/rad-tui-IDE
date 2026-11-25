@@ -1,19 +1,7 @@
-/* Ncurses-style browser terminal. Calculator and game rules run in demo.wasm. */
+/* Ncurses-style browser terminal. FutureShell state and app rules run in futureshell.wasm. */
 (() => {
   'use strict';
   const DEFAULT_URL = 'https://amjp.psy-k.org/futureshell/repo/webasm/tic-tac-toe.webasm.bin';
-  const catalog = {
-    games: [
-      {id: 'minesweeper', icon: '💣🚩', name: 'minesweeper'},
-      {id: 'tic-tac-toe', icon: '⭕❌', name: 'tic-tac-toe'}
-    ],
-    internet: [{id: 'futurebrowser', icon: '🌐', name: 'futurebrowser'}],
-    tools: [
-      {id: 'bash', icon: '🐚', name: 'bash'},
-      {id: 'calc', icon: '🧮', name: 'calc'},
-      {id: 'nano', icon: '📃', name: 'nano'}
-    ]
-  };
   const colors = {
     teal: '#008f93', dark: '#075b5f', light: '#c0c0c0', blue: '#0000aa',
     field: '#e3e3d8', ink: '#101917', white: '#f3f3e9', black: '#000000',
@@ -25,20 +13,58 @@
   const statusElement = document.getElementById('status');
   const grid = {cols: 33, rows: 40, cw: 10, ch: 18, width: 330, height: 720};
   const segmenter = new Intl.Segmenter(undefined, {granularity: 'grapheme'});
+  const kanaChoices = {
+    'あ': 'あいうえお', 'か': 'かきくけこ', 'さ': 'さしすせそ', 'た': 'たちつてと',
+    'な': 'なにぬねの', 'は': 'はひふへほ', 'ま': 'まみむめも', 'や': 'やゆよ',
+    'ら': 'らりるれろ', 'わ': 'わをん'
+  };
+  const kanaMarks = {
+    '゛': Object.fromEntries(Array.from('かきくけこさしすせそたちつてとはひふへほばびぶべぼ')
+      .map((letter, index) => [letter, Array.from('がぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽ')[index]])),
+    '小': Object.fromEntries(Array.from('あいうえおやゆよつ')
+      .map((letter, index) => [letter, Array.from('ぁぃぅぇぉゃゅょっ')[index]]))
+  };
+  const romaji = {};
+  for (const [prefix, syllables] of [
+    ['', 'あいうえお'], ['k', 'かきくけこ'], ['s', 'さしすせそ'], ['t', 'たちつてと'],
+    ['n', 'なにぬねの'], ['h', 'はひふへほ'], ['m', 'まみむめも'], ['y', 'や ゆ よ'],
+    ['r', 'らりるれろ'], ['w', 'わ   を'], ['g', 'がぎぐげご'], ['z', 'ざじずぜぞ'],
+    ['d', 'だぢづでど'], ['b', 'ばびぶべぼ'], ['p', 'ぱぴぷぺぽ']
+  ]) Array.from(syllables).forEach((kana, index) => {
+    if (kana !== ' ') romaji[prefix + 'aiueo'[index]] = kana;
+  });
+  Object.assign(romaji, {
+    shi:'し', chi:'ち', tsu:'つ', fu:'ふ', ji:'じ', si:'し', ti:'ち', tu:'つ', hu:'ふ', zi:'じ',
+    sha:'しゃ', shu:'しゅ', sho:'しょ', cha:'ちゃ', chu:'ちゅ', cho:'ちょ',
+    ja:'じゃ', ju:'じゅ', jo:'じょ', nn:'ん', '-':'ー'
+  });
+  for (const [prefix, syllable] of [
+    ['ky','き'], ['ny','に'], ['hy','ひ'], ['my','み'], ['ry','り'],
+    ['gy','ぎ'], ['by','び'], ['py','ぴ']
+  ]) ['a','u','o'].forEach((vowel, index) => { romaji[prefix + vowel] = syllable + 'ゃゅょ'[index]; });
+  const romajiKeys = Object.keys(romaji).sort((a, b) => b.length - a.length);
   const state = {
-    wasm: null, forms: null, folder: '', app: 'bash', keyboard: true, mode: 'ABC',
+    wasm: null, forms: null, catalog: null, kanji: null, candidate: null,
+    folder: '', app: 'bash', keyboard: true, mode: 'ABC',
     shift: false, ctrl: false, alt: false, flag: false, focus: 0, symbolReturn: 'ABC',
     edit: '', command: '', url: DEFAULT_URL, note: '', nanoMessage: '',
+    nanoOriginal: '', nanoDiscardPending: false, nanoScroll: 0,
+    romajiInput: {start: -1, raw: '', rendered: ''},
+    kanaInput: {key: '', start: -1, index: 0, time: 0},
     browserMessage: '', request: null, downloadedGame: null,
     notice: 'Loading WebAssembly…', menu: '',
     log: ['Starting shell...']
   };
   let hits = [];
 
-  function loadNote() {
-    try { return localStorage.getItem('rad-tui-demo-note') || ''; }
-    catch (_) { return ''; }
+  function entries(path = state.folder) { return state.catalog?.[path] || []; }
+  function apps() {
+    return Object.values(state.catalog || {}).flat().filter(entry => entry.kind === 'app');
   }
+  function parentFolder(path = state.folder) {
+    return path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
+  }
+
   function wasm(name, result = null, types = [], args = []) {
     return state.wasm.ccall(name, result, types, args);
   }
@@ -68,6 +94,9 @@
     ctx.fillStyle = color;
     ctx.fillRect(x * grid.cw, y * grid.ch, w * grid.cw, h * grid.ch);
   }
+  function cellWidth(glyph) {
+    return /[\u{1100}-\u{11ff}\u{2e80}-\u{a4cf}\u{ac00}-\u{d7af}\u{1f000}-\u{1faff}]/u.test(glyph) ? 2 : 1;
+  }
   function text(x, y, width, value, color = colors.ink, background = null, align = 'left') {
     if (y < 0 || y >= grid.rows || width <= 0) return;
     if (background) fill(x, y, width, 1, background);
@@ -77,7 +106,6 @@
     ctx.clip();
     ctx.fillStyle = color;
     const graphemes = Array.from(segmenter.segment(String(value)), item => item.segment);
-    const cellWidth = glyph => /[\u{1100}-\u{11ff}\u{2e80}-\u{a4cf}\u{ac00}-\u{d7af}\u{1f000}-\u{1faff}]/u.test(glyph) ? 2 : 1;
     const units = graphemes.reduce((sum, glyph) => sum + cellWidth(glyph), 0);
     let start = 0;
     if (align === 'center') start = Math.floor((width - units) / 2);
@@ -141,8 +169,10 @@
     const keyRows = ['かな', 'NAV', 'SYM'].includes(state.mode) ? 4 : 3;
     const keyboardStart = state.keyboard ? grid.rows - (keyRows + 3) * buttonH : -1;
     const toggleY = state.keyboard ? -1 : grid.rows - buttonH;
-    const shellH = Math.max(1, (state.keyboard ? keyboardStart : toggleY) - 2);
+    const candidateH = state.candidate ? buttonH : 0;
+    const shellH = Math.max(1, (state.keyboard ? keyboardStart : toggleY) - 2 - candidateH);
     return {top: 1, bottom: shellH, shellH, commandY: 1 + shellH,
+      candidateY: (state.keyboard ? keyboardStart : toggleY) - candidateH,
       keyboardStart, toggleY, buttonH, keyRows, shellW: grid.cols - 1};
   }
   function drawHeader() {
@@ -157,28 +187,30 @@
     const pathX = Math.min(area.shellW - 1, navW * 2 + 1);
     text(pathX, area.top, area.shellW - pathX,
       state.folder ? `DTF/${state.folder}` : 'DTF', colors.ink, colors.teal);
-    const entries = state.folder ? catalog[state.folder] : Object.keys(catalog).sort();
+    const items = entries();
     const rowH = area.shellH >= 18 ? 3 : 1;
     const columns = Math.max(1, Math.min(4, Math.floor(area.shellW / 20)));
     const gridW = Math.min(area.shellW, columns * 20);
     const x = Math.floor((area.shellW - gridW) / 2);
     const tileW = Math.floor(gridW / columns);
-    entries.forEach((entry, index) => {
+    items.forEach((entry, index) => {
       const y = area.top + 2 + Math.floor(index / columns) * rowH;
       if (y + rowH - 1 >= area.bottom) return;
-      const folder = typeof entry === 'string';
-      const label = folder ? `${entry === 'internet' ? '🌐' : '🗂️'} ${entry}` : `${entry.icon} ${entry.name}`;
+      const folder = entry.kind === 'folder';
+      const label = `${entry.icon} ${entry.name}`;
       button(x + (index % columns) * tileW, y, tileW, rowH,
-        label, folder ? 'folder' : 'app', folder ? entry : entry.id);
+        label, folder ? 'folder' : 'app', folder ? entry.path : entry.id);
     });
     text(navW, area.bottom, area.shellW - navW * 2,
-      `${entries.length} items  •  page 1/1`, colors.ink, colors.teal);
+      `${items.length} items  •  page 1/1`, colors.ink, colors.teal);
   }
   function drawBash(area) {
     const all = state.log.flatMap(entry => wrap(entry, area.shellW));
+    all.push(`$ ${state.command}${state.edit === 'command' ? '▌' : ''}`);
     const height = Math.max(1, area.shellH);
     const visible = all.slice(-height);
     visible.forEach((entry, index) => text(0, area.top + index, area.shellW, entry));
+    hit(0, area.top + visible.length - 1, area.shellW, 1, 'edit', 'command');
   }
   function drawProjectForm(name, area) {
     const form = state.forms[name];
@@ -255,19 +287,54 @@
       wrap(state.browserMessage, Math.max(1, area.shellW - 4)).slice(0, 4)
         .forEach((line, index) => text(2, area.top + 9 + index, area.shellW - 4, line));
   }
+  function layoutNanoText(value, width, cursorOffset) {
+    const lines = [''];
+    let row = 0, col = 0;
+    let caret = {row: 0, col: 0};
+    const markCaret = () => {
+      caret = col === width ? {row: row + 1, col: 0} : {row, col};
+    };
+    for (const item of segmenter.segment(value)) {
+      const glyph = item.segment;
+      if (glyph === '\n') {
+        lines.push(''); row++; col = 0;
+      } else {
+        let display = glyph;
+        let advance = glyph === '\t' ? 4 - col % 4 : cellWidth(glyph);
+        if (col + advance > width && col > 0) {
+          lines.push(''); row++; col = 0;
+          if (glyph === '\t') advance = 4;
+        }
+        if (glyph === '\t') display = ' '.repeat(advance);
+        lines[row] += display;
+        col += advance;
+      }
+      if (item.index + glyph.length <= cursorOffset) markCaret();
+    }
+    return {lines, caret};
+  }
   function drawNano(area) {
     const w = area.shellW;
     text(0, area.top, w, '       New Buffer', colors.ink, colors.light);
-    const lines = state.note.split('\n').flatMap(value => wrap(value, w));
-    lines.slice(0, Math.max(0, area.shellH - 4)).forEach((value, index) => {
-      if (value) text(0, area.top + 1 + index, Math.min(w, value.length),
-        value, colors.white, colors.black);
-    });
-    hit(0, area.top + 1, w, Math.max(1, area.shellH - 4), 'edit', 'note');
+    const {lines, caret} = layoutNanoText(state.note, w, input.selectionStart);
+    const visibleRows = Math.max(1, area.shellH - 4);
+    const maxScroll = Math.max(0, Math.max(lines.length, caret.row + 1) - visibleRows);
+    state.nanoScroll = Math.min(state.nanoScroll, maxScroll);
     if (state.edit === 'note') {
-      const row = Math.min(area.shellH - 4, Math.max(1, lines.length));
-      text(0, area.top + row, 1, '▌', colors.white, colors.black);
+      if (caret.row < state.nanoScroll) state.nanoScroll = caret.row;
+      else if (caret.row >= state.nanoScroll + visibleRows)
+        state.nanoScroll = caret.row - visibleRows + 1;
     }
+    lines.slice(state.nanoScroll, state.nanoScroll + visibleRows).forEach((value, index) => {
+      if (value) text(0, area.top + 1 + index, w, value, colors.white, colors.black);
+    });
+    hit(0, area.top + 1, w, visibleRows, 'edit', 'note');
+    if (state.edit === 'note' && caret.row >= state.nanoScroll &&
+        caret.row < state.nanoScroll + visibleRows)
+      text(caret.col, area.top + 1 + caret.row - state.nanoScroll, 1,
+        '▌', colors.white, colors.black);
+    canvas.dataset.nanoCursor = `${caret.row},${caret.col}`;
+    canvas.dataset.nanoScroll = String(state.nanoScroll);
     const statusY = area.top + area.shellH - 3;
     text(0, statusY, w, state.nanoMessage || 'Welcome to nano.  For basic help',
       colors.ink, colors.light);
@@ -335,12 +402,29 @@
   function drawCommand(area) {
     const y = area.commandY;
     fill(0, y, grid.cols, 1, colors.teal);
-    text(0, y, grid.cols, state.command + (state.edit === 'command' ? '▌' : ''));
+    if (state.app !== 'bash')
+      text(0, y, grid.cols, state.command + (state.edit === 'command' ? '▌' : ''));
     hit(0, y, grid.cols, 1, 'edit', 'command');
+  }
+  function drawCandidates(area) {
+    if (!state.candidate) return;
+    const keyboardW = Math.min(30, grid.cols);
+    const left = Math.max(0, Math.floor((grid.cols - keyboardW) / 2));
+    const page = Math.floor(state.candidate.index / 3) * 3;
+    for (let slot = 0, x = left; slot < 3; slot++) {
+      const width = Math.floor(keyboardW / 3) + (slot < keyboardW % 3 ? 1 : 0);
+      const index = page + slot;
+      if (index < state.candidate.options.length)
+        button(x, area.candidateY, width, area.buttonH, state.candidate.options[index],
+          'candidate', index, index === state.candidate.index ? colors.blue : colors.light);
+      x += width;
+    }
   }
   function draw() {
     if (!ctx || grid.rows < 18) return;
     hits = [];
+    canvas.dataset.nanoCursor = '';
+    canvas.dataset.nanoScroll = '';
     ctx.font = `${Math.max(12, Math.round(grid.cw * 1.68))}px "DejaVu Sans Mono", "Liberation Mono", monospace`;
     ctx.textBaseline = 'alphabetic';
     fill(0, 0, grid.cols, grid.rows, colors.light);
@@ -351,7 +435,7 @@
     ctx.beginPath();
     ctx.rect(0, area.top * grid.ch, area.shellW * grid.cw, area.shellH * grid.ch);
     ctx.clip();
-    if (!state.wasm || !state.forms) text(0, area.top, grid.cols - 1, 'Starting shell...');
+    if (!state.wasm || !state.forms || !state.catalog) text(0, area.top, grid.cols - 1, 'Starting shell...');
     else if (!state.app) drawDesktop(area);
     else if (['calc', 'tic-tac-toe', 'minesweeper', 'futurebrowser'].includes(state.app))
       drawProjectForm(state.app, area);
@@ -361,17 +445,34 @@
     for (let y = area.top; y <= area.bottom; y++)
       text(grid.cols - 1, y, 1, '▒', colors.ink, colors.teal);
     drawCommand(area);
+    drawCandidates(area);
     drawKeyboard(area);
     if (state.focus >= hits.length) state.focus = 0;
     canvas.dataset.screen = state.app || 'DT';
+    canvas.dataset.shellEngine = state.wasm ? 'futureshell.wasm' : 'loading';
+    canvas.dataset.lastShellLine = state.app === 'bash' ? state.log.at(-1) || '' : '';
     canvas.dataset.folder = state.folder;
     canvas.dataset.keyboard = state.keyboard ? 'visible' : 'hidden';
     canvas.dataset.downloaded = state.downloadedGame ? 'yes' : 'no';
     canvas.dataset.board = state.app === 'tic-tac-toe' ? tttBoard() : '';
-    const detail = state.app === 'calc' ? ` Display ${wasm('calc_display', 'string')}.` :
+    canvas.dataset.candidateOptions = state.candidate ? JSON.stringify(state.candidate.options) : '[]';
+    canvas.dataset.candidateIndex = state.candidate ? String(state.candidate.index) : '-1';
+    const detail = state.app === 'bash' ?
+      ` ${state.log.filter(Boolean).at(-1) || 'Welcome to FutureShell'}. Prompt dollar sign.` :
+      state.app === 'calc' ? ` Display ${wasm('calc_display', 'string')}.` :
       state.app === 'tic-tac-toe' ? ` ${tttStatus()}.` :
       state.app === 'minesweeper' ? ` ${wasm('ms_status', 'string')}. Flags ${Array.from(wasm('ms_board', 'string')).filter(cell => cell === 'F').length}.` : '';
-    canvas.setAttribute('aria-label', `Phone Shell terminal. ${state.app || 'DT desktop'} in DTF${state.folder ? '/' + state.folder : ''}.${detail} Tab selects controls; Enter activates. ${state.notice}`);
+    const candidateDetail = state.candidate ?
+      ` Kanji candidates: ${state.candidate.options.join(', ')}. Selected ${state.candidate.options[state.candidate.index]}.` : '';
+    canvas.setAttribute('aria-label', `FutureShell terminal. ${state.app || 'DT desktop'} in DTF${state.folder ? '/' + state.folder : ''}.${detail}${candidateDetail} Tab selects controls; Enter activates. ${state.notice}`);
+  }
+  function syncViewport() {
+    const viewport = window.visualViewport;
+    const root = document.documentElement;
+    root.style.setProperty('--viewport-left', `${viewport?.offsetLeft || 0}px`);
+    root.style.setProperty('--viewport-top', `${viewport?.offsetTop || 0}px`);
+    root.style.setProperty('--viewport-width', `${viewport?.width || window.innerWidth}px`);
+    root.style.setProperty('--viewport-height', `${viewport?.height || window.innerHeight}px`);
   }
   function resize() {
     const rect = canvas.getBoundingClientRect();
@@ -381,7 +482,7 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     grid.width = rect.width;
     grid.height = rect.height;
-    grid.cols = Math.max(33, Math.min(72, Math.floor(rect.width / 10.5)));
+    grid.cols = Math.max(33, Math.floor(rect.width / 10.5));
     grid.cw = rect.width / grid.cols;
     grid.rows = Math.max(18, Math.floor(rect.height / (grid.cw * 1.72)));
     grid.ch = rect.height / grid.rows;
@@ -390,7 +491,11 @@
     draw();
   }
   function openApp(id) {
-    if (!Object.values(catalog).flat().some(item => item.id === id)) return;
+    if (!apps().some(item => item.id === id)) return;
+    if (!['bash', 'calc', 'futurebrowser', 'minesweeper', 'nano', 'tic-tac-toe'].includes(id)) {
+      notice(`${id}.bin has no browser port yet`);
+      return;
+    }
     leaveApp();
     state.app = id;
     state.focus = 0;
@@ -398,16 +503,26 @@
     if (id === 'calc') wasm('calc_reset');
     if (id === 'tic-tac-toe') tttReset();
     if (id === 'minesweeper') { wasm('ms_reset'); state.flag = false; }
-    if (id === 'nano') { state.note = ''; state.nanoMessage = ''; }
+    if (id === 'nano') {
+      state.note = '';
+      state.nanoScroll = 0;
+      state.nanoOriginal = '';
+      state.nanoMessage = '';
+      state.nanoDiscardPending = false;
+    }
     draw();
+    focusActiveEditor();
   }
   function leaveApp() {
+    resetJapaneseInput();
+    state.candidate = null;
     if (state.request) { state.request.abort(); state.request = null; }
     state.downloadedGame = null;
     state.app = null;
     state.menu = '';
     state.edit = '';
     input.blur();
+    canvas.focus();
   }
   function home() {
     leaveApp();
@@ -415,22 +530,47 @@
     state.keyboard = false;
     state.command = '';
     state.focus = 0;
+    if (state.wasm) state.log = [wasm('shell_boot', 'string'), ''];
     notice('Home · DT loaded');
   }
   function focusEdit(target) {
     if (target === 'readonly') return;
+    if (state.candidate) commitCandidate();
+    resetJapaneseInput();
     state.edit = target;
     input.value = state[target];
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
     draw();
   }
+  function focusActiveEditor() {
+    const target = state.app === 'nano' ? 'note' :
+      state.app === 'bash' ? 'command' :
+      state.app === 'futurebrowser' ? 'url' : '';
+    if (target) {
+      if (state.edit !== target) focusEdit(target);
+      else if (document.activeElement !== input) {
+        // A tap focuses the canvas. Return focus without resetting the caret or IME.
+        const start = input.selectionStart, end = input.selectionEnd;
+        input.focus({preventScroll: true});
+        input.setSelectionRange(start, end);
+        draw();
+      }
+    } else canvas.focus();
+  }
   function saveNote() {
-    try {
-      localStorage.setItem('rad-tui-demo-note', state.note);
-      state.nanoMessage = 'Wrote 1 line';
-      notice('Nano · saved in this browser');
-    } catch (_) { state.nanoMessage = 'Browser storage unavailable'; notice(state.nanoMessage); }
+    state.nanoMessage = 'Error: read-only filesystem; cannot save';
+    notice(state.nanoMessage);
+  }
+  function exitNano() {
+    if (state.note !== state.nanoOriginal && !state.nanoDiscardPending) {
+      state.nanoDiscardPending = true;
+      state.nanoMessage = 'Error: read-only buffer. ^X again discards changes';
+      notice(state.nanoMessage);
+      return;
+    }
+    leaveApp();
+    draw();
   }
   function runCommand(raw) {
     const command = raw.trim();
@@ -438,28 +578,19 @@
     input.value = '';
     if (!command) { draw(); return; }
     state.log.push(`$ ${command}`);
-    const [verb, ...rest] = command.split(/\s+/);
-    const arg = rest.join(' ');
-    if (command === './DT/DT.bin' || command === 'DT' || command === 'home') { home(); return; }
-    if (verb === 'help') state.log.push('help ls pwd cd <folder> open <app> clear echo <text> date');
-    else if (verb === 'pwd') state.log.push('/phoneapps/DT/DTF' + (state.folder ? '/' + state.folder : ''));
-    else if (verb === 'ls') state.log.push(state.folder ? catalog[state.folder].map(item => item.name + '.bin').join('  ') : Object.keys(catalog).join('  '));
-    else if (verb === 'cd' && (arg === '..' || arg === '/')) { state.folder = ''; state.log.push('DTF'); }
-    else if (verb === 'cd' && Object.prototype.hasOwnProperty.call(catalog, arg)) { state.folder = arg; state.log.push(`DTF/${arg}`); }
-    else if (verb === 'cd') state.log.push(`No such folder: ${arg}`);
-    else if (verb === 'echo') state.log.push(arg);
-    else if (verb === 'date') state.log.push(new Date().toString());
-    else if (verb === 'clear') state.log = [];
-    else {
-      const requested = verb === 'open' ? arg : verb;
-      const app = Object.values(catalog).flat().find(item => item.id === requested || item.name === requested || item.name + '.bin' === requested);
-      if (app) { openApp(app.id); return; }
-      state.log.push(`Command not found: ${command}`);
-    }
+    wasm('shell_run', null, ['string', 'string', 'string'], [command, new Date().toString(), state.folder]);
+    const action = wasm('shell_action', 'number');
+    state.folder = wasm('shell_directory', 'string');
+    if (action === 1) { home(); return; }
+    if (action === 2) { openApp(wasm('shell_target', 'string')); return; }
+    if (action === 3) state.log = [];
+    const result = wasm('shell_output', 'string');
+    if (result) state.log.push(result);
     if (state.log.length > 100) state.log.splice(0, state.log.length - 100);
     leaveApp();
     state.app = 'bash';
     draw();
+    focusActiveEditor();
   }
   function browserMessage(message) { state.browserMessage = message; notice(message); }
   async function go() {
@@ -524,10 +655,10 @@
     }
   }
   function activate(action, data = '', rightClick = false) {
-    if ((!state.wasm || !state.forms) && !['home', 'keyboard'].includes(action)) return;
+    if ((!state.wasm || !state.forms || !state.catalog) && !['home', 'keyboard'].includes(action)) return;
     if (action === 'home') home();
     else if (action === 'keyboard') { state.keyboard = !state.keyboard; draw(); }
-    else if (action === 'back') { if (state.app) leaveApp(); else state.folder = ''; draw(); }
+    else if (action === 'back') { if (state.app) leaveApp(); else state.folder = parentFolder(); draw(); }
     else if (action === 'refresh') draw();
     else if (action === 'folder') { state.folder = data; draw(); }
     else if (action === 'app') openApp(data);
@@ -540,21 +671,136 @@
     else if (action === 'flagMode') { state.flag = !state.flag; draw(); }
     else if (action === 'mine') { wasm(rightClick || state.flag ? 'ms_flag' : 'ms_reveal', null, ['number'], [Number(data)]); draw(); }
     else if (action === 'saveNote') saveNote();
-    else if (action === 'nanoExit') { leaveApp(); draw(); }
-    else if (action === 'loadNote') { state.note = loadNote(); state.nanoMessage = 'Read from browser storage'; draw(); }
+    else if (action === 'nanoExit') exitNano();
+    else if (action === 'loadNote') { state.nanoMessage = 'No file is available to read'; notice(state.nanoMessage); }
     else if (action === 'nanoHelp') { state.nanoMessage = '^O saves  ^X exits  ^R reads'; draw(); }
     else if (action === 'nanoSearch') { state.nanoMessage = 'Search is not available in this web demo'; draw(); }
     else if (action === 'nanoReplace') { state.nanoMessage = 'Replace is not available in this web demo'; draw(); }
-    else if (action === 'clearNote') { state.note = ''; if (state.edit === 'note') input.value = ''; draw(); }
+    else if (action === 'clearNote') { state.note = ''; state.nanoDiscardPending = false; if (state.edit === 'note') input.value = ''; draw(); }
     else if (action === 'go') go();
     else if (action === 'menu') { state.menu = state.menu === data ? '' : data; draw(); }
     else if (action === 'menuItem') { state.menu = ''; notice(data === 'About' ? 'TUI Python Calculator · rad-tui-IDE' : 'Already in Standard view.'); }
-    else if (action === 'mode') { state.mode = data; draw(); }
+    else if (action === 'mode') { if (state.candidate) commitCandidate(); resetJapaneseInput(); state.mode = data; draw(); }
+    else if (action === 'candidate') commitCandidate(Number(data));
     else if (action === 'key') virtualKey(data);
+  }
+  function resetJapaneseInput() {
+    state.romajiInput = {start: -1, raw: '', rendered: ''};
+    state.kanaInput = {key: '', start: -1, index: 0, time: 0};
+  }
+  function startCandidates() {
+    if (input.selectionStart !== input.selectionEnd) return false;
+    const end = input.selectionStart;
+    const reading = input.value.slice(0, end).match(/[ぁ-ゟー]+$/u)?.[0];
+    if (!reading) return false;
+    const katakana = Array.from(reading, letter => {
+      const code = letter.codePointAt(0);
+      return code >= 0x3041 && code <= 0x3096 ? String.fromCodePoint(code + 0x60) : letter;
+    }).join('');
+    const options = Array.from(new Set([...(state.kanji?.[reading] || []), reading, katakana]));
+    state.candidate = {start: end - reading.length, end, reading, options, index: 0};
+    resetJapaneseInput();
+    draw();
+    return true;
+  }
+  function cycleCandidate(step) {
+    if (!state.candidate) return;
+    const candidate = state.candidate;
+    candidate.index = (candidate.index + step + candidate.options.length) % candidate.options.length;
+    draw();
+  }
+  function commitCandidate(index = state.candidate?.index) {
+    const candidate = state.candidate;
+    if (!candidate) return;
+    state.candidate = null;
+    resetJapaneseInput();
+    insertText(candidate.options[index], candidate.start, candidate.end);
+  }
+  function cancelCandidate() {
+    if (!state.candidate) return;
+    state.candidate = null;
+    resetJapaneseInput();
+    draw();
+  }
+  function insertText(value, start = input.selectionStart, end = input.selectionEnd) {
+    input.setRangeText(value, start, end, 'end');
+    input.dispatchEvent(new Event('input'));
+  }
+  function convertRomaji(raw) {
+    let result = '';
+    for (let index = 0; index < raw.length;) {
+      const rest = raw.slice(index).toLowerCase();
+      if (rest.length > 1 && rest[0] === rest[1] && !'aeioun'.includes(rest[0])) {
+        result += 'っ'; index++; continue;
+      }
+      if (rest === 'n' || (rest.length > 1 && rest[0] === 'n' && !'aiueoy'.includes(rest[1]))) {
+        result += 'ん'; index++; continue;
+      }
+      const match = romajiKeys.find(key => rest.startsWith(key));
+      if (match) { result += romaji[match]; index += match.length; }
+      else result += raw[index++];
+    }
+    return result;
+  }
+  function appendRomaji(key) {
+    const composition = state.romajiInput;
+    const continuing = composition.start >= 0 &&
+      input.selectionStart === composition.start + composition.rendered.length &&
+      input.selectionEnd === input.selectionStart &&
+      input.value.slice(composition.start, input.selectionStart) === composition.rendered;
+    if (!continuing) {
+      // A canvas tap can interrupt the tracked composition. Reuse an unfinished
+      // romaji prefix already visible before the caret (for example t + e).
+      const before = input.value.slice(0, input.selectionStart);
+      const pending = [3, 2, 1].map(length => before.slice(-length)).find(value =>
+        /^[a-z]+$/.test(value) && romajiKeys.some(roman =>
+          roman.startsWith(value) && roman.length > value.length)) || '';
+      resetJapaneseInput();
+      if (pending && input.selectionStart === input.selectionEnd) {
+        state.romajiInput.start = input.selectionStart - pending.length;
+        state.romajiInput.raw = pending;
+        state.romajiInput.rendered = pending;
+      }
+    }
+    const active = state.romajiInput;
+    if (active.start < 0) active.start = input.selectionStart;
+    active.raw += key.toLowerCase();
+    const end = active.start + active.rendered.length;
+    active.rendered = convertRomaji(active.raw);
+    insertText(active.rendered, active.start, end);
+  }
+  function pressKana(key) {
+    const choices = kanaChoices[key];
+    const previous = state.kanaInput;
+    const now = Date.now();
+    if (choices) {
+      const cycling = previous.key === key && now - previous.time <= 900 &&
+        input.selectionStart === previous.start + 1 && input.selectionEnd === input.selectionStart &&
+        input.value[previous.start] === choices[previous.index];
+      const index = cycling ? (previous.index + 1) % choices.length : 0;
+      const start = cycling ? previous.start : input.selectionStart;
+      insertText(choices[index], start, cycling ? start + 1 : input.selectionEnd);
+      state.kanaInput = {key, start, index, time: now};
+    } else if (kanaMarks[key]) {
+      const end = input.selectionStart;
+      if (end > 0 && end === input.selectionEnd) {
+        const replacement = kanaMarks[key][input.value[end - 1]];
+        if (replacement) insertText(replacement, end - 1, end);
+      }
+      resetJapaneseInput();
+    }
   }
   function virtualKey(key) {
     if (key === 'Hide') { state.keyboard = false; draw(); return; }
+    if (state.candidate) {
+      if (key === 'Sp' || key === '→' || key === '↓') { cycleCandidate(1); return; }
+      if (key === '←' || key === '↑') { cycleCandidate(-1); return; }
+      if (key === 'Ent') { commitCandidate(); return; }
+      if (key === 'Bk' || key === 'Esc') { cancelCandidate(); return; }
+      if (!['Ctrl', 'Alt', 'Shift'].includes(key)) commitCandidate();
+    }
     if (key === 'SYM') {
+      resetJapaneseInput();
       if (state.mode === 'SYM') state.mode = state.symbolReturn;
       else { state.symbolReturn = state.mode; state.mode = 'SYM'; }
       draw();
@@ -568,11 +814,39 @@
       if (shortcut) { state.ctrl = false; activate(shortcut); return; }
     }
     if (key === 'Esc') { if (state.app) { leaveApp(); draw(); } return; }
-    if (!state.edit) focusEdit('command');
+    if (!state.edit) focusEdit(state.app === 'nano' ? 'note' :
+      state.app === 'futurebrowser' ? 'url' : 'command');
+    if (key === 'Sp' && (state.mode === 'ROM' || state.mode === 'かな') && startCandidates()) return;
+    if (state.mode === 'かな' && (kanaChoices[key] || kanaMarks[key])) {
+      state.romajiInput = {start: -1, raw: '', rendered: ''};
+      pressKana(key);
+      state.shift = false;
+      return;
+    }
+    if ((state.mode === 'ROM' || state.mode === 'かな') && /^[a-z]$/.test(key) && !state.shift) {
+      state.kanaInput = {key: '', start: -1, index: 0, time: 0};
+      appendRomaji(key);
+      return;
+    }
+    if (key === 'Bk' && state.mode === 'ROM' && state.romajiInput.raw &&
+        input.selectionStart === state.romajiInput.start + state.romajiInput.rendered.length &&
+        input.selectionEnd === input.selectionStart) {
+      const active = state.romajiInput;
+      active.raw = active.raw.slice(0, -1);
+      const end = active.start + active.rendered.length;
+      active.rendered = convertRomaji(active.raw);
+      insertText(active.rendered, active.start, end);
+      if (!active.raw) resetJapaneseInput();
+      return;
+    }
+    resetJapaneseInput();
     if (key === 'Ent') {
       if (state.edit === 'command') runCommand(input.value);
       else if (state.edit === 'url') go();
-      else input.setRangeText('\n', input.selectionStart, input.selectionEnd, 'end');
+      else {
+        input.setRangeText('\n', input.selectionStart, input.selectionEnd, 'end');
+        input.dispatchEvent(new Event('input'));
+      }
       return;
     }
     if (key === 'Bk' || key === 'Del') input.setRangeText('', Math.max(0, input.selectionStart - (key === 'Bk' ? 1 : 0)),
@@ -598,18 +872,57 @@
   function click(event, rightClick = false) {
     const {x, y} = point(event);
     const index = hits.findLastIndex(item => x >= item.x && x < item.x + item.w && y >= item.y && y < item.y + item.h);
-    if (index < 0) { canvas.focus(); return; }
+    if (index < 0) { focusActiveEditor(); return; }
     state.focus = index;
     const item = hits[index];
     activate(item.action, item.data, rightClick);
-    if (item.action !== 'edit') canvas.focus();
+    if (item.action !== 'edit') focusActiveEditor();
   }
   canvas.addEventListener('click', event => click(event));
   canvas.addEventListener('contextmenu', event => { event.preventDefault(); click(event, true); });
-  input.addEventListener('input', () => { if (state.edit) { state[state.edit] = input.value; draw(); } });
+  input.addEventListener('focus', () => {
+    // Keep physical keys and FutureShell's own keys active without Android's IME.
+    try { navigator.virtualKeyboard?.hide(); } catch (_) { /* API unavailable */ }
+  });
+  input.addEventListener('input', event => {
+    if (!state.edit) return;
+    if (event.isTrusted) { resetJapaneseInput(); state.candidate = null; }
+    state[state.edit] = input.value;
+    if (state.edit === 'note') state.nanoDiscardPending = false;
+    draw();
+  });
+  input.addEventListener('select', () => { if (state.edit === 'note') draw(); });
+  input.addEventListener('keyup', () => { if (state.edit === 'note') draw(); });
   input.addEventListener('keydown', event => {
+    if (state.candidate) {
+      const key = event.key;
+      if (key === ' ' || key.startsWith('Arrow')) {
+        event.preventDefault();
+        cycleCandidate(key === 'ArrowLeft' || key === 'ArrowUp' ? -1 : 1);
+        return;
+      }
+      if (key === 'Enter') { event.preventDefault(); commitCandidate(); return; }
+      if (key === 'Backspace' || key === 'Escape') { event.preventDefault(); cancelCandidate(); return; }
+      if (key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) commitCandidate();
+    }
+    if (event.key === ' ' && !event.ctrlKey && !event.altKey && !event.metaKey &&
+        (state.mode === 'ROM' || state.mode === 'かな')) {
+      event.preventDefault(); virtualKey('Sp'); return;
+    }
+    if (!event.isComposing && !event.ctrlKey && !event.altKey && !event.metaKey &&
+        !event.shiftKey && (state.mode === 'ROM' || state.mode === 'かな') && /^[a-z]$/.test(event.key)) {
+      event.preventDefault();
+      virtualKey(event.key);
+      return;
+    }
+    if (event.key === 'Backspace' && state.mode === 'ROM' && state.romajiInput.raw) {
+      event.preventDefault();
+      virtualKey('Bk');
+      return;
+    }
     if (event.key === 'Enter' && state.edit !== 'note') {
       event.preventDefault();
+      resetJapaneseInput();
       if (state.edit === 'command') runCommand(input.value);
       else if (state.edit === 'url') go();
     } else if (event.key === 'Escape') { event.preventDefault(); state.edit = ''; input.blur(); canvas.focus(); draw(); }
@@ -620,28 +933,58 @@
     }
   });
   canvas.addEventListener('keydown', event => {
+    if (state.candidate && [' ', 'Enter', 'Backspace', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+      event.preventDefault();
+      if (event.key === ' ' || event.key.startsWith('Arrow'))
+        cycleCandidate(['ArrowLeft', 'ArrowUp'].includes(event.key) ? -1 : 1);
+      else if (event.key === 'Enter') commitCandidate();
+      else cancelCandidate();
+      return;
+    }
     if (event.key === 'Tab') { event.preventDefault(); state.focus = (state.focus + (event.shiftKey ? hits.length - 1 : 1)) % hits.length; draw(); }
     else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') { event.preventDefault(); state.focus = (state.focus + 1) % hits.length; draw(); }
     else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') { event.preventDefault(); state.focus = (state.focus + hits.length - 1) % hits.length; draw(); }
     else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); const item = hits[state.focus]; if (item) activate(item.action, item.data); }
     else if (event.key === 'Escape') { event.preventDefault(); activate('back'); }
-    else if (event.key.length === 1 && !event.ctrlKey && !event.altKey) { event.preventDefault(); focusEdit('command'); input.setRangeText(event.key, input.selectionStart, input.selectionEnd, 'end'); input.dispatchEvent(new Event('input')); }
+    else if (event.key.length === 1 && !event.ctrlKey && !event.altKey) {
+      event.preventDefault();
+      focusEdit(state.app === 'nano' ? 'note' :
+        state.app === 'futurebrowser' ? 'url' : 'command');
+      if ((state.mode === 'ROM' || state.mode === 'かな') && /^[a-z]$/.test(event.key))
+        virtualKey(event.key);
+      else insertText(event.key);
+    }
   });
-  window.addEventListener('resize', resize);
+  window.addEventListener('focus', () => { if (state.wasm) focusActiveEditor(); });
+  window.addEventListener('resize', () => { syncViewport(); resize(); });
+  window.visualViewport?.addEventListener('resize', syncViewport);
+  window.visualViewport?.addEventListener('scroll', syncViewport);
   new ResizeObserver(resize).observe(canvas);
+  syncViewport();
   resize();
-  if (typeof createPhoneDemo !== 'function') { notice('demo.js missing; run build.bash'); return; }
+  if (typeof createFutureShell !== 'function') { notice('futureshell.js missing; run build.bash'); return; }
   Promise.all([
-    createPhoneDemo({locateFile: file => file}),
+    createFutureShell({locateFile: file => file}),
     fetch('forms.json').then(response => {
       if (!response.ok) throw new Error('forms.json could not be loaded');
       return response.json();
+    }),
+    fetch('catalog.json').then(response => {
+      if (!response.ok) throw new Error('catalog.json could not be loaded');
+      return response.json();
+    }),
+    fetch('kanji.json').then(response => {
+      if (!response.ok) throw new Error('kanji.json could not be loaded');
+      return response.json();
     })
-  ]).then(([instance, forms]) => {
+  ]).then(([instance, forms, catalog, kanji]) => {
     state.wasm = instance;
     state.forms = forms;
+    state.catalog = catalog;
+    state.kanji = kanji;
+    state.log = [wasm('shell_boot', 'string'), ''];
     wasm('calc_reset'); wasm('ttt_reset'); wasm('ms_reset');
-    notice('WebAssembly ready · Tab, arrows, Enter and mouse work');
-    canvas.focus();
+    notice('WebAssembly ready · FutureShell started');
+    focusActiveEditor();
   }).catch(error => notice('WebAssembly load failed: ' + error.message));
 })();
