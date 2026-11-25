@@ -349,7 +349,7 @@ public:
     mutable bool child_exited = false;
     std::string pending_utf8;
 
-    bool start(int cols, int rows) {
+    bool start(int cols, int rows, const std::string& directory = "") {
         child_exited = false;
         pending_utf8.clear();
         winsize size{};
@@ -358,6 +358,7 @@ public:
         child = forkpty(&master, nullptr, nullptr, &size);
         if (child < 0) return false;
         if (child == 0) {
+            if (!directory.empty() && chdir(directory.c_str()) != 0) _exit(127);
             setenv("TERM", "xterm-256color", 1);
             setenv("PS1", "$ ", 1);
             setenv("PROMPT_COMMAND", "", 1);

@@ -21,8 +21,8 @@ class DesktopProjectTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.project_dir = Path(self.temp.name)
-        project = json.loads((ROOT / 'projects/DT/DT.json').read_text())
-        self.assertEqual(project['code'], (ROOT / 'projects/DT/DT.py').read_text())
+        project = json.loads((ROOT / 'projects/phoneapps/DT/DT.json').read_text())
+        self.assertEqual(project['code'], (ROOT / 'projects/phoneapps/DT/DT.py').read_text())
         self.form = Window.from_dict(project)
         self.messages = []
         self.scope = {'PROJECT_DIR': str(self.project_dir), 'Form1': self.form,
@@ -54,6 +54,14 @@ class DesktopProjectTests(unittest.TestCase):
         self.scope['on_click_btn_back']()
         self.assertEqual(self.scope['current_dir'], desktop)
         self.assertEqual(len(self.form.controls), 7 + len(self.scope['entry_controls']))
+
+    def test_folder_icon_file_changes_folder_button(self):
+        desktop = self.project_dir / 'DTF'
+        (desktop / 'internet').mkdir()
+        (desktop / 'internet.icons').write_text('🌐\n')
+        self.scope['on_click_btn_refresh']()
+        self.assertIn('🌐 internet',
+                      {button.caption for button in self.scope['entry_controls']})
 
     def test_uses_icon_files_and_launches_binary_in_its_folder(self):
         desktop = self.project_dir / 'DTF'
@@ -96,7 +104,7 @@ class DesktopProjectTests(unittest.TestCase):
         self.assertEqual(self.scope['btn_next'].y, 30)
 
     def test_phone_shell_understands_split_hide_keyboard_message(self):
-        phone = json.loads((ROOT / 'projects/phone_shell.json').read_text())
+        phone = json.loads((ROOT / 'projects/phoneapps/phone_shell.json').read_text())
         scope = {}
         exec(phone['code'], scope)
         terminal = scope['TerminalBuffer'](10, 5)

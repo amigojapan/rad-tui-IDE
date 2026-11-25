@@ -14,7 +14,7 @@ page = 0
 last_layout_size = None
 
 
-def icon_for(path):
+def icon_for(path, default='⚡'):
     for icon_file in (path.with_suffix('.icons'), Path(str(path) + '.icons')):
         try:
             icon = icon_file.read_text(encoding='utf-8').strip().split()
@@ -22,7 +22,7 @@ def icon_for(path):
             continue
         if icon:
             return icon[0]
-    return '⚡'
+    return default
 
 
 def layout():
@@ -89,7 +89,8 @@ def scan_entries():
 
     button_type = type(btn_back)
     for index, path in enumerate(entries):
-        caption = '🗂️ ' + path.name if path.is_dir() else icon_for(path) + ' ' + path.stem
+        caption = (icon_for(path, '🗂️') + ' ' + path.name if path.is_dir()
+                   else icon_for(path) + ' ' + path.stem)
         name = f'dt_entry_{index}'
         button = button_type(-50, 0, 1, 1, 3, name, caption)
         Form1.controls.append(button)

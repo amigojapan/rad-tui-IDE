@@ -28,7 +28,7 @@ from rad_tui_basic.rad_tui_py import Window  # noqa: E402
 
 class PhoneLayoutTests(unittest.TestCase):
     def test_python_phone_form_fills_screen_and_keyboard_stays_centered(self):
-        project = json.loads((ROOT / 'projects/phone_shell.json').read_text())
+        project = json.loads((ROOT / 'projects/phoneapps/phone_shell.json').read_text())
         self.assertNotIn('btn_interrupt', {item['name_id'] for item in project['controls']})
         for cols, lines in ((33, 100), (80, 40), (28, 24), (50, 120)):
             for standalone in (False, True):
@@ -100,11 +100,16 @@ class PhoneLayoutTests(unittest.TestCase):
                                      form.h)
 
     def test_python_home_stops_foreground_app_and_starts_dt(self):
-        project = json.loads((ROOT / 'projects/phone_shell.json').read_text())
+        project = json.loads((ROOT / 'projects/phoneapps/phone_shell.json').read_text())
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             (root / 'projects').mkdir()
-            (root / 'DT').write_text('#!/bin/sh\n')
+            (root / 'projects' / 'DT').mkdir()
+            (root / 'projects' / 'DT' / 'DT.bin').write_text('#!/bin/sh\n')
+            downloaded = root / 'projects' / 'a.out'
+            downloaded.write_text('downloaded program')
+            legacy_download = root / 'projects' / 'o.out'
+            legacy_download.write_text('old download')
             scope = {'PROJECT_DIR': str(root / 'projects')}
             exec(project['code'], scope)
             process = SimpleNamespace(pid=4321, poll=lambda: None,
@@ -128,9 +133,29 @@ class PhoneLayoutTests(unittest.TestCase):
             self.assertIn((4321, scope['signal'].SIGKILL), events)
             self.assertIn('cleanup', events)
             self.assertIn('restart', events)
+            self.assertFalse(downloaded.exists())
+            self.assertFalse(legacy_download.exists())
             self.assertFalse(scope['keyboard_visible'])
-            self.assertEqual(events[-1], 'cd -- ' + scope['shlex'].quote(str(root)) +
-                             ' && ./DT\r')
+            self.assertEqual(events[-1], './DT/DT.bin\r')
+
+    def test_python_phone_shell_starts_in_project_directory(self):
+        project = json.loads((ROOT / 'projects/phoneapps/phone_shell.json').read_text())
+        with tempfile.TemporaryDirectory() as folder:
+            phoneapps = Path(folder) / 'phone apps'
+            phoneapps.mkdir()
+            scope = {'PROJECT_DIR': str(phoneapps),
+                     'txt_shell': SimpleNamespace(w=33, h=20)}
+            exec(project['code'], scope)
+            scope['layout'] = lambda: None
+            scope['render_terminal'] = lambda: None
+            scope['poll_shell'] = lambda: None
+            with patch.object(scope['subprocess'], 'Popen', return_value=object()) as launch, \
+                    patch.object(scope['atexit'], 'register'):
+                scope['on_form_load']()
+            try:
+                self.assertEqual(launch.call_args.kwargs['cwd'], str(phoneapps))
+            finally:
+                os.close(scope['shell_master'])
 
 
 def read_pty(master, seconds):
@@ -206,7 +231,7 @@ class CppExportIntegrationTests(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which('nano'), 'requires nano')
     def test_phone_shell_runs_command_and_curses_editor(self):
-        project = json.loads((ROOT / 'projects/phone_shell.json').read_text())
+        project = json.loads((ROOT / 'projects/phoneapps/phone_shell.json').read_text())
         process, master = self.launch(self.compile(project, 'phone'))
         read_pty(master, 0.6)
         os.write(master, b'echo NATIVE_SHELL_OK\r')
@@ -220,14 +245,17 @@ class CppExportIntegrationTests(unittest.TestCase):
 
     def test_native_phone_home_closes_app_and_launches_dt(self):
         project = Window.from_dict(json.loads(
-            (ROOT / 'projects/phone_shell.json').read_text())).to_dict()
+            (ROOT / 'projects/phoneapps/phone_shell.json').read_text())).to_dict()
         source = export_cpp(project, self.folder / 'phone_home.cpp')
         app = self.folder / 'app.sh'
         app.write_text('#!/bin/sh\nprintf "%s" "$$" > app.pid\nexec sleep 30\n')
         app.chmod(0o755)
-        desktop = self.folder / 'DT'
+        desktop = self.folder / 'DT' / 'DT.bin'
+        desktop.parent.mkdir()
         desktop.write_text('#!/bin/sh\nprintf HOME_OK > home_marker\n')
         desktop.chmod(0o755)
+        (self.folder / 'a.out').write_text('downloaded program')
+        (self.folder / 'o.out').write_text('old download')
         harness = self.folder / 'phone_home_harness.cpp'
         harness.write_text(
             '#define main exported_main\n'
@@ -238,8 +266,8 @@ class CppExportIntegrationTests(unittest.TestCase):
             '  std::setlocale(LC_ALL, "");\n'
             '  initscr(); cbreak(); noecho();\n'
             '  phone.start();\n'
-            '  auto root = phone.desktop_root();\n'
-            '  phone.pty.send("cd -- " + phone.shell_quote(root.string()) + " && ./app.sh\\r");\n'
+            '  auto root = phone.executable_dir();\n'
+            '  phone.pty.send("./app.sh\\r");\n'
             '  auto wait_file = [&](const char* name) {\n'
             '    for (int count = 0; count < 150; ++count) {\n'
             '      if (std::filesystem::exists(root / name)) return true;\n'
@@ -253,6 +281,8 @@ class CppExportIntegrationTests(unittest.TestCase):
             '  phone.mouse(tap);\n'
             '  bool home_visible = phone.c("btn_home").x == 0 && phone.c("btn_home").y == 0 &&\n'
             '      phone.c("txt_shell").y == 1 && !phone.keyboard_visible;\n'
+            '  bool removed = !std::filesystem::exists(root / "a.out") &&\n'
+            '      !std::filesystem::exists(root / "o.out");\n'
             '  bool launched = wait_file("home_marker");\n'
             '  bool app_stopped = app_pid > 0 && kill(app_pid, 0) == -1 && errno == ESRCH;\n'
             '  if (!app_stopped && app_pid > 0) {\n'
@@ -262,7 +292,7 @@ class CppExportIntegrationTests(unittest.TestCase):
             '  }\n'
             '  phone.pty.stop(); endwin();\n'
             '  return !app_started ? 11 : !home_visible ? 12 : !launched ? 13 :\n'
-            '      !app_stopped ? 14 : 0;\n'
+            '      !app_stopped ? 14 : !removed ? 15 : 0;\n'
             '}\n')
         binary = self.folder / 'phone_home_harness'
         subprocess.run(['g++', '-std=c++17', '-O2', '-Wall', '-Wextra',
@@ -274,7 +304,7 @@ class CppExportIntegrationTests(unittest.TestCase):
         self.assertEqual((self.folder / 'home_marker').read_text(), 'HOME_OK')
 
     def test_phone_shell_ime_works_while_keyboard_is_minimized(self):
-        project = json.loads((ROOT / 'projects/phone_shell.json').read_text())
+        project = json.loads((ROOT / 'projects/phoneapps/phone_shell.json').read_text())
         source = export_cpp(project, self.folder / 'phone_ime.cpp')
         harness = self.folder / 'ime_harness.cpp'
         harness.write_text(
@@ -336,7 +366,7 @@ class CppExportIntegrationTests(unittest.TestCase):
         self.assertEqual(process.wait(timeout=2), 0)
 
     def test_dt_exports_and_navigates_with_native_callbacks(self):
-        project = Window.from_dict(json.loads((ROOT / 'projects/DT/DT.json').read_text())).to_dict()
+        project = Window.from_dict(json.loads((ROOT / 'projects/phoneapps/DT/DT.json').read_text())).to_dict()
         source = export_cpp(project, self.folder / 'DT.cpp')
         desktop = self.folder / 'DTF'
         (desktop / 'games' / 'arcade').mkdir(parents=True)
@@ -501,6 +531,59 @@ class CppExportIntegrationTests(unittest.TestCase):
                 process, master = self.launch(binary)
                 read_pty(master, 0.2)
                 self.assertEqual(process.wait(timeout=2), 0)
+
+    def test_futurebrowser_exports_checks_404_and_shows_runner_progress(self):
+        project = Window.from_dict(json.loads(
+            (ROOT / 'projects/phoneapps/futurebrowser.json').read_text())).to_dict()
+        phoneapps = self.folder / 'phoneapps'
+        internet = phoneapps / 'DT' / 'DTF' / 'internet'
+        internet.mkdir(parents=True)
+        source = export_cpp(project, internet / 'futurebrowser.cpp')
+        runner = phoneapps / 'run-downloaded-bin.sh'
+        runner.write_text('#!/bin/sh\nprintf "RUNNER_PROGRESS=42%%\\n" >&2\n'
+                          'printf "%s" "$1" > launch_url\n')
+        runner.chmod(0o755)
+        mock_bin = self.folder / 'mock_bin'
+        mock_bin.mkdir()
+        wget = mock_bin / 'wget'
+        wget.write_text('#!/bin/sh\ncase "$*" in\n'
+                        '  *missing.bin*) printf "  HTTP/1.1 404 Not Found\\n" >&2; exit 8;;\n'
+                        'esac\nprintf "  HTTP/1.1 200 OK\\n" >&2\n')
+        wget.chmod(0o755)
+        harness = internet / 'futurebrowser_harness.cpp'
+        harness.write_text(
+            '#define main exported_main\n'
+            f'#include "{source}"\n'
+            '#undef main\n'
+            '#include <fstream>\n'
+            'int main() {\n'
+            '  std::setlocale(LC_ALL, "");\n'
+            '  initscr(); cbreak(); noecho();\n'
+            '  dispatch("on_form_load");\n'
+            '  bool prompt = futurebrowser.c("lbl_url").caption ==\n'
+            '      "enter URL to .bin file";\n'
+            '  bool default_url = futurebrowser.c("txt_url").caption ==\n'
+            '      "https://amjp.psy-k.org/futureshell/repo/amd64/tic-tac-toe.amd64.bin";\n'
+            '  bool go_button = futurebrowser.c("btn_go").caption == "GO!";\n'
+            '  futurebrowser.c("txt_url").caption = "https://example.test/app.bin";\n'
+            '  dispatch("on_click_btn_go");\n'
+            '  auto marker = futurebrowser.runner_path().parent_path() / "launch_url";\n'
+            '  std::ifstream input(marker); std::string launched; input >> launched;\n'
+            '  bool ran = launched == "https://example.test/app.bin";\n'
+            '  futurebrowser.c("txt_url").caption = "https://example.test/missing.bin";\n'
+            '  ungetch(\'x\'); dispatch("on_enter_txt_url");\n'
+            '  endwin(); return !prompt ? 11 : !default_url ? 13 : !go_button ? 14 : !ran ? 12 : 0;\n'
+            '}\n')
+        binary = internet / 'futurebrowser_harness'
+        subprocess.run(['g++', '-std=c++17', '-O2', '-Wall', '-Wextra',
+                        str(harness), '-lncursesw', '-o', str(binary)],
+                       check=True, capture_output=True, text=True)
+        with patch.dict(os.environ, {'PATH': str(mock_bin) + os.pathsep + os.environ['PATH']}):
+            process, master = self.launch(binary)
+        output = read_pty(master, 0.5)
+        self.assertEqual(process.wait(timeout=2), 0)
+        self.assertIn(b'RUNNER_PROGRESS=42%', output)
+        self.assertIn(b'404 not found', output)
 
     def test_unsupported_callback_has_location_and_no_output(self):
         project = json.loads((ROOT / 'projects/examples/cpp-export-demo.json').read_text())

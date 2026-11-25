@@ -11,6 +11,7 @@ try:
     from .cpp_calculator import is_calculator, calculator_cpp
     from .cpp_games import (is_tic_tac_toe, tic_tac_toe_cpp,
                             is_minesweeper, minesweeper_cpp)
+    from .cpp_futurebrowser import is_futurebrowser, futurebrowser_cpp
 except ImportError:  # Allow running rad_tui_py.py directly from its source folder.
     from cpp_callbacks import CallbackTranslationError, compile_callbacks
     from cpp_phone_shell import is_phone_shell, phone_cpp
@@ -18,6 +19,7 @@ except ImportError:  # Allow running rad_tui_py.py directly from its source fold
     from cpp_calculator import is_calculator, calculator_cpp
     from cpp_games import (is_tic_tac_toe, tic_tac_toe_cpp,
                            is_minesweeper, minesweeper_cpp)
+    from cpp_futurebrowser import is_futurebrowser, futurebrowser_cpp
 
 
 class CppExportError(ValueError):
@@ -27,7 +29,8 @@ class CppExportError(ValueError):
 def validate_cpp_export(project):
     """Validate the supported native callback subset and project styling."""
     if not (is_phone_shell(project) or is_dt(project) or is_calculator(project) or
-            is_tic_tac_toe(project) or is_minesweeper(project)):
+            is_tic_tac_toe(project) or is_minesweeper(project) or
+            is_futurebrowser(project)):
         try:
             compile_callbacks(project)
         except CallbackTranslationError as exc:
@@ -624,6 +627,8 @@ def generate_cpp(project):
         callbacks = tic_tac_toe_cpp(project)
     elif is_minesweeper(project):
         callbacks = minesweeper_cpp(project)
+    elif is_futurebrowser(project):
+        callbacks = futurebrowser_cpp(project)
     else:
         callbacks = CALLBACK_SUPPORT + '\n' + compile_callbacks(project)
     controls = ',\n'.join(_control_initializer(item) for item in project.get('controls', []))

@@ -818,7 +818,7 @@ public:
     mutable bool child_exited = false;
     std::string pending_utf8;
 
-    bool start(int cols, int rows) {
+    bool start(int cols, int rows, const std::string& directory = "") {
         child_exited = false;
         pending_utf8.clear();
         winsize size{};
@@ -827,6 +827,7 @@ public:
         child = forkpty(&master, nullptr, nullptr, &size);
         if (child < 0) return false;
         if (child == 0) {
+            if (!directory.empty() && chdir(directory.c_str()) != 0) _exit(127);
             setenv("TERM", "xterm-256color", 1);
             setenv("PS1", "$ ", 1);
             setenv("PROMPT_COMMAND", "", 1);
@@ -1325,7 +1326,7 @@ public:
     void start() {
         init_romaji(); c("txt_shell").caption.clear();
         layout(); terminal.resize(std::max(1, c("txt_shell").w - 1), c("txt_shell").h);
-        started = pty.start(terminal.cols, terminal.rows);
+        started = pty.start(terminal.cols, terminal.rows, executable_dir().string());
         if (!started) terminal.feed(L"[Shell could not start]\n");
     }
     void handle_terminal_commands() {
@@ -1374,20 +1375,12 @@ public:
         }
         if (x >= 0 && x < COLS && y >= 0 && y < LINES) { curs_set(1); move(y, x); }
     }
-    static std::string shell_quote(const std::string& value) {
-        std::string result = "'";
-        for (char ch : value) result += ch == '\'' ? "'\\''" : std::string(1, ch);
-        return result + "'";
-    }
-    static std::filesystem::path desktop_root() {
+    static std::filesystem::path executable_dir() {
         char executable[4096];
         ssize_t size = readlink("/proc/self/exe", executable, sizeof(executable) - 1);
-        std::filesystem::path directory = size > 0
+        return size > 0
             ? std::filesystem::path(std::string(executable, static_cast<std::size_t>(size))).parent_path()
             : std::filesystem::current_path();
-        for (const auto& candidate : {directory, directory.parent_path(), std::filesystem::current_path()})
-            if (std::filesystem::is_regular_file(candidate / "DT")) return candidate;
-        return directory.parent_path();
     }
     void home() {
         std::vector<pid_t> groups;
@@ -1399,6 +1392,12 @@ public:
         for (pid_t group : groups)
             if (group > 0 && group != getpgrp()) kill(-group, SIGKILL);
         pty.stop();
+        std::string cleanup_error;
+        for (const auto& name : {"a.out", "o.out"}) {
+            auto download = executable_dir() / name;
+            if (::unlink(download.c_str()) != 0 && errno != ENOENT)
+                cleanup_error = std::string(name) + ": " + std::strerror(errno);
+        }
         started = false;
         shell_exit_reported = false;
         keyboard_visible = false;
@@ -1406,9 +1405,11 @@ public:
         command_set("");
         layout();
         terminal = NativeTerminal(std::max(1, c("txt_shell").w - 1), c("txt_shell").h);
-        started = pty.start(terminal.cols, terminal.rows);
+        if (!cleanup_error.empty())
+            terminal.feed(wide("[Cannot remove " + cleanup_error + "]\n"));
+        started = pty.start(terminal.cols, terminal.rows, executable_dir().string());
         if (!started) terminal.feed(L"[Shell could not start]\n");
-        else pty.send("cd -- " + shell_quote(desktop_root().string()) + " && ./DT\r");
+        else pty.send("./DT/DT.bin\r");
     }
     void click(const std::string& name) {
         if (name == "btn_home") home();

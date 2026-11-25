@@ -1,0 +1,124 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Phone Shell terminal smoke check</title>
+<p id="result">WAITING</p>
+<iframe id="demo" src="index.html" title="Phone Shell demo" style="width:560px;height:900px"></iframe>
+<script>
+if (new URLSearchParams(location.search).has('mobile')) {
+  document.getElementById('demo').style.width = '360px';
+  document.getElementById('demo').style.height = '760px';
+}
+if (new URLSearchParams(location.search).has('native')) {
+  document.getElementById('demo').style.width = '350px';
+  document.getElementById('demo').style.height = '730px';
+}
+let attempts = 0;
+const timer = setInterval(async () => {
+  const frame = document.getElementById('demo');
+  const d = frame.contentDocument;
+  if (!d || !d.getElementById('status')?.textContent.includes('WebAssembly ready')) {
+    if (++attempts > 200) { document.getElementById('result').textContent = 'FAIL: WebAssembly did not load'; clearInterval(timer); }
+    return;
+  }
+  clearInterval(timer);
+  const result = document.getElementById('result');
+  const canvas = d.getElementById('terminal');
+  const cols = Number(canvas.dataset.cols);
+  const rect = canvas.getBoundingClientRect();
+  const click = (x, y, right = false) => canvas.dispatchEvent(new frame.contentWindow.MouseEvent(right ? 'contextmenu' : 'click', {
+    bubbles: true,
+    clientX: rect.left + (x + .5) * rect.width / cols,
+    clientY: rect.top + (y + .5) * rect.height / Number(canvas.dataset.rows)
+  }));
+  const check = (condition, label) => { if (!condition) throw new Error(label); };
+  const waitFor = async condition => {
+    for (let attempt = 0; attempt < 60; attempt++) {
+      if (condition()) return true;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return false;
+  };
+  const home = () => click(5, 0);
+  const entry = index => {
+    const innerWidth = cols - 1;
+    const columns = Math.max(1, Math.min(4, Math.floor(innerWidth / 20)));
+    const gridWidth = Math.min(innerWidth, columns * 20);
+    const tileWidth = Math.floor(gridWidth / columns);
+    const left = Math.floor((innerWidth - gridWidth) / 2);
+    click(left + (index % columns) * tileWidth + Math.floor(tileWidth / 2),
+      4 + Math.floor(index / columns) * 3);
+  };
+  const folder = entry;
+  const app = entry;
+  const previousNote = d.defaultView.localStorage.getItem('rad-tui-demo-note');
+  try {
+    check(canvas.dataset.screen === 'bash' && canvas.dataset.keyboard === 'visible', 'native shell startup');
+    home();
+    check(canvas.dataset.screen === 'DT' && canvas.dataset.folder === '' &&
+          canvas.dataset.keyboard === 'hidden', 'Home opens DT and hides keyboard');
+    folder(0); // games
+    app(1); // tic-tac-toe
+    check(canvas.dataset.screen === 'tic-tac-toe', 'Tic Tac Toe opens');
+    click(9, 6); // btn0 in tic-tac-toe.json
+    check(canvas.getAttribute('aria-label').includes('Your turn') ||
+          canvas.getAttribute('aria-label').includes('AI Wins'), 'Tic Tac Toe move');
+    home();
+    folder(2); // tools
+    app(1); // calc
+    check(canvas.dataset.screen === 'calc', 'Calculator opens');
+    click(3, 11); // 7
+    click(18, 15); // +
+    click(8, 11); // 8
+    click(18, 21); // =
+    check(canvas.getAttribute('aria-label').includes('Display 15.'), 'Calculator 7 + 8');
+    home();
+    folder(0); // games
+    app(0); // minesweeper
+    check(canvas.dataset.screen === 'minesweeper', 'Minesweeper opens');
+    click(3, 6, true); // right-click b0_0
+    check(canvas.getAttribute('aria-label').includes('Flags 1.'), 'Minesweeper flag');
+    home();
+    folder(1); // internet
+    app(0); // Future Browser
+    check(canvas.dataset.screen === 'futurebrowser', 'Future Browser opens');
+    click(5, 4); // txt_url
+    const input = d.getElementById('terminalInput');
+    check(input.value === 'https://amjp.psy-k.org/futureshell/repo/webasm/tic-tac-toe.webasm.bin', 'default WebAssembly URL');
+    input.value = d.defaultView.location.origin + '/missing.bin';
+    input.dispatchEvent(new Event('input'));
+    click(Math.floor((cols - 1 - 7) / 2) + 3, 7); // GO!
+    check(await waitFor(() => d.getElementById('status').textContent === '404 not found'), '404 message');
+    input.value = d.defaultView.location.origin + '/sample-download.bin';
+    input.dispatchEvent(new Event('input'));
+    click(Math.floor((cols - 1 - 7) / 2) + 3, 7);
+    check(await waitFor(() => d.getElementById('status').textContent === 'Downloaded file is not compatible WebAssembly'), 'reject non-WebAssembly file');
+    input.value = d.defaultView.location.origin + '/tic-tac-toe.webasm.bin';
+    input.dispatchEvent(new Event('input'));
+    click(Math.floor((cols - 1 - 7) / 2) + 3, 7);
+    check(await waitFor(() => canvas.dataset.screen === 'tic-tac-toe' && canvas.dataset.downloaded === 'yes'), 'downloaded WebAssembly runs');
+    click(9, 6);
+    check(canvas.dataset.board.includes('X'), 'downloaded game responds to move');
+    home();
+    check(canvas.dataset.downloaded === 'no', 'Home stops downloaded game');
+    folder(2); // tools
+    app(2); // nano
+    check(canvas.dataset.screen === 'nano', 'Nano opens');
+    click(4, 6);
+    input.value = 'ncurses demo note';
+    input.dispatchEvent(new Event('input'));
+    click(Math.floor((cols - 1) / 3) + 1, Number(canvas.dataset.rows) - 6); // ^O Write Out
+    check(d.defaultView.localStorage.getItem('rad-tui-demo-note') === 'ncurses demo note', 'Nano save');
+    home();
+    folder(2);
+    app(0); // bash
+    check(canvas.dataset.screen === 'bash', 'Bash opens');
+    click(Math.floor(cols / 2), Number(canvas.dataset.rows) - 2);
+    check(canvas.dataset.keyboard === 'visible', 'screen keyboard');
+    result.textContent = 'PASS: ncurses canvas, DT, Tic Tac Toe, Calculator, Minesweeper, Future Browser, Nano, Bash, keyboard';
+  } catch (error) { result.textContent = 'FAIL: ' + error.message; }
+  finally {
+    if (previousNote === null) d.defaultView.localStorage.removeItem('rad-tui-demo-note');
+    else d.defaultView.localStorage.setItem('rad-tui-demo-note', previousNote);
+  }
+}, 50);
+</script>

@@ -25,7 +25,7 @@ struct Control {
 struct Menu { std::string label, name; std::vector<Menu> sub; };
 struct MenuRegion { int x, y, w, depth; const std::vector<Menu>* items; };
 
-static int form_x = 0, form_y = 1;
+static int form_x = 0, form_y = 0;
 static int form_w = 80, form_h = 24;
 static int form_fg = -1, form_bg = -1;
 static bool form_display_border_and_caption = false;
@@ -33,7 +33,7 @@ static std::string form_title = "\x44\x54";
 static std::vector<Control> controls = {
     {0, 0, 11, 1, 3, "\xe2\x86\x90\x20\x42\x61\x63\x6b", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
     {11, 0, 11, 1, 3, "\x52\x65\x66\x72\x65\x73\x68", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
-    {22, 1, 57, 1, 9, "\x44\x54\x46", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
+    {23, 0, 57, 1, 9, "\x44\x54\x46", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
     {0, 23, 11, 1, 3, "\xe2\x97\x80\x20\x50\x72\x65\x76", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
     {69, 23, 11, 1, 3, "\x4e\x65\x78\x74\x20\xe2\x96\xb6", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
     {11, 23, 58, 1, 9, "\x30\x20\x69\x74\x65\x6d\x73", 0, 1000, 0, 100, 0, 0, 0, 0, 12, -1, -1, true, false, false, {}},
@@ -456,7 +456,8 @@ public:
         return lower(path.extension().string()) == ".bin";
     }
 
-    static std::string icon_for(const std::filesystem::path& path) {
+    static std::string icon_for(const std::filesystem::path& path,
+                                const std::string& fallback = "⚡") {
         auto stem_icon = path;
         stem_icon.replace_extension(".icons");
         for (const auto& candidate : {stem_icon, std::filesystem::path(path.string() + ".icons")}) {
@@ -464,7 +465,7 @@ public:
             std::string icon;
             if (input >> icon) return icon;
         }
-        return "⚡";
+        return fallback;
     }
 
     void start() {
@@ -571,7 +572,7 @@ public:
             Control button = template_button;
             button.type = 3;
             button.x = -50; button.y = 0; button.w = button.h = 1;
-            button.caption = directory ? "🗂️ " + path.filename().string()
+            button.caption = directory ? icon_for(path, "🗂️") + " " + path.filename().string()
                                        : icon_for(path) + " " + path.stem().string();
             controls.push_back(button);
             control_names.push_back("dt_entry_" + std::to_string(index));

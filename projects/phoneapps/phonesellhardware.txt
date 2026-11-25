@@ -1,0 +1,20 @@
+would it be possible ot make a run phoneshell and all its sub apps well on a minimal alpine linux distro with ncurses openssh and other stuff can you make such a distro fully in web assembly? dont do it, just tellme if you can or cant.
+ also tell me hte difference in size of such an alpine linux and a gentoo based distro
+
+because web assembly cant run ELF files, it does nto work on the web demo, I need to chnage the web demo so it uses web assembly instead of ELF can you change that? and generate the proper web assembly file for hte tic-tac-toe-demo and make the downlaoder downlaod it, adn run it like it does on hte real thing please? please make the default URL of tthe web demo version be https://amjp.psy-k.org/futureshell/repo/webasm/tic-tac-toe.webasm.bin and let the tic-tac-toe.webasm.bin file be in the phoneapps directory, I will put it on the server manually
+
+hardware 
+please check out my TUI-OS for extremely low cost Linux PDA kind of devices, https://cdn.lurker.chat/SHB7Dk2CBvl1.webp , it should run on this device I think https://www.waveshare.com/product/esp32-related/boards-kits/esp32-s31/esp32-s31-touch-lcd-4.3c.htm
+
+porfavor checate el sistema operativo para sistemas TUI que hice  para sistemas de extremo bajo costo de linux https://cdn.lurker.chat/SHB7Dk2CBvl1.webp , quiro que corra en este hardware de mas o moenos 55 dolares mas envio https://www.waveshare.com/product/esp32-related/boards-kits/esp32-s31/esp32-s31-touch-lcd-4.3c.htm
+
+ I am thinking of making seperate devices with theri own microcontrolelrs in them for making calls and takign pictures, they coudl even be wireless if wanted,a dn wifi hotspot
+
+instead of browser, use sanbox to download, run and delete a binary
+bwrap --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 --proc /proc --dev /dev --tmpfs /tmp --unshare-all ./your-binary
+actually have a "browser" that asks for an https://domain/binary.bin     wget or curl it and then run it as explained
+I think I dont need to do the sha512 verificaiton anymore if I do this cause https already is suppposed to prevent manin hte middle atatcks
+
+https://www.amazon.co.jp/-/en/Albapilix-Milk-V-512MB-Development-Milk-V-Duo-S-512M-Basic/dp/B0GJ64NJ9H
+
+https://www.sifive.com/development-platforms/hifive-premier-p550https://www.sifive.com/development-platforms/hifive-premier-p550

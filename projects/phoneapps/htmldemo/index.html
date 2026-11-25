@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101918">
+  <title>Phone Shell · ncurses WebAssembly demo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+  <script src="demo.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <canvas id="terminal" role="application" tabindex="0"
+          aria-label="Phone Shell terminal demo. Use Tab to select controls and Enter to activate them.">
+    This demo needs a browser with Canvas and WebAssembly support.
+  </canvas>
+  <textarea id="terminalInput" aria-label="Terminal text input" autocomplete="off"
+            autocapitalize="off" spellcheck="false"></textarea>
+  <span id="status" class="sr-only" role="status">Loading WebAssembly…</span>
+</body>
+</html>

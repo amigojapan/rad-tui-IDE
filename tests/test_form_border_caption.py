@@ -28,7 +28,7 @@ class FormBorderCaptionTests(unittest.TestCase):
         form = Window.from_dict(legacy)
         form.display_border_and_caption = False
         self.assertFalse(Window.from_dict(form.to_dict()).display_border_and_caption)
-        phone = json.loads((ROOT / 'projects/phone_shell.json').read_text())
+        phone = json.loads((ROOT / 'projects/phoneapps/phone_shell.json').read_text())
         self.assertFalse(Window.from_dict(phone).display_border_and_caption)
 
     def test_border_is_visible_in_designer_without_caption(self):

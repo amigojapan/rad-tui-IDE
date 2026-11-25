@@ -12,7 +12,7 @@ def _fingerprint(project):
 
 
 # The native adapter must be reviewed whenever DT's Python callbacks change.
-DT_FINGERPRINT = '9c6fffe19e617e14736c051932707ee6e2b22798a91f57415fc3a6f022307cf8'
+DT_FINGERPRINT = 'e478d84cb4c55fb0d6d7fcd5b6cc79e54be55add53d6aa6b033579876fb2a81a'
 
 
 def is_dt(project):
@@ -57,7 +57,8 @@ public:
         return lower(path.extension().string()) == ".bin";
     }
 
-    static std::string icon_for(const std::filesystem::path& path) {
+    static std::string icon_for(const std::filesystem::path& path,
+                                const std::string& fallback = "⚡") {
         auto stem_icon = path;
         stem_icon.replace_extension(".icons");
         for (const auto& candidate : {stem_icon, std::filesystem::path(path.string() + ".icons")}) {
@@ -65,7 +66,7 @@ public:
             std::string icon;
             if (input >> icon) return icon;
         }
-        return "⚡";
+        return fallback;
     }
 
     void start() {
@@ -172,7 +173,7 @@ public:
             Control button = template_button;
             button.type = 3;
             button.x = -50; button.y = 0; button.w = button.h = 1;
-            button.caption = directory ? "🗂️ " + path.filename().string()
+            button.caption = directory ? icon_for(path, "🗂️") + " " + path.filename().string()
                                        : icon_for(path) + " " + path.stem().string();
             controls.push_back(button);
             control_names.push_back("dt_entry_" + std::to_string(index));
