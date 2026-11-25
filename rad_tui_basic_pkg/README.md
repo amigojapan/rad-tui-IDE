@@ -25,22 +25,39 @@ A Visual Basic 1.0 for MS-DOS inspired visual IDE that runs on Linux. Design for
 
 ## Linux (Debian / Ubuntu / Linux Mint)
 
-**1. Install Python and venv**
-Ensure your system repositories are up to date and install Python 3 along with the `venv` module:
+**1. Install Python, venv, and Git**
+Ensure your system repositories are up to date:
 ```bash
 sudo apt update
-sudo apt install python3 python3-venv python3-pip
+sudo apt install python3 python3-venv python3-pip git
 ```
 
-**2. Setup and Run**
-Create a virtual environment in your home directory, activate it, and launch the application:
+**2. Create a virtual environment**
 ```bash
 cd ~
 python3 -m venv rad-tui-ide
 source rad-tui-ide/bin/activate
-pip install rad-tui-ide
+```
+
+**3. Install from Git or a wheel**
+
+To install the current source from Git:
+```bash
+git clone https://github.com/amigojapan/rad-tui-IDE.git
+python -m pip install --force-reinstall ./rad-tui-IDE/rad_tui_basic_pkg
 rad-tui-ide
 ```
+
+Or, after copying `rad_tui_ide-0.1.24-py3-none-any.whl` to `~/Downloads`, install that wheel:
+```bash
+python -m pip install --force-reinstall ~/Downloads/rad_tui_ide-0.1.24-py3-none-any.whl
+rad-tui-ide
+```
+
+The PyPI 0.1.23 release does not contain the fix for terminals with 64 color
+pairs. If `pip install rad-tui-ide` still selects 0.1.23, use Git or the wheel
+above until a newer release is published.
+
 *(Note: For Arch, Fedora, or other distributions, use your respective package manager like `pacman` or `dnf` to install Python 3.)*
 
 
@@ -135,8 +152,6 @@ RAD-TUI-IDE recreates the magic of early 90s visual programming environments lik
 - 🔄 **Design/Runtime toggle** - Switch between design-time and run-time modes
 
 ## 🎮 How to Run
-
-pip install rad-tui-ide
 
 rad-tui-ide
 
