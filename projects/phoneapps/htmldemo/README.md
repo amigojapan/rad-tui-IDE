@@ -40,6 +40,13 @@ To rebuild with Emscripten:
 bash build.bash
 ```
 
+To rebuild every native phone app and both WebAssembly files from the
+repository root:
+
+```bash
+bash projects/phoneapps/build-all.bash
+```
+
 ## Browser limits
 
 The original phone shell uses a Linux pseudoterminal and launches native `.bin`
