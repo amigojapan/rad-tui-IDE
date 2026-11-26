@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+port_dir=$script_dir
+while [[ ! -f $port_dir/.dist-port ]]; do
+    [[ $port_dir != / ]] || { echo 'Port root not found' >&2; exit 1; }
+    port_dir=${port_dir%/*}
+    [[ -n $port_dir ]] || port_dir=/
+done
+source "$port_dir/launcher.sh"
+run_project "phone_shell.json" "."

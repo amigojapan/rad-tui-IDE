@@ -89,7 +89,7 @@ def scan_entries():
 
     button_type = type(btn_back)
     for index, path in enumerate(entries):
-        caption = (icon_for(path, '🗂️') + ' ' + path.name if path.is_dir()
+        caption = (icon_for(path, '📁') + ' ' + path.name if path.is_dir()
                    else icon_for(path) + ' ' + path.stem)
         name = f'dt_entry_{index}'
         button = button_type(-50, 0, 1, 1, 3, name, caption)

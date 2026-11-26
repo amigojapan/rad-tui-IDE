@@ -1,0 +1,15 @@
+{
+  "x": 0,
+  "y": 0,
+  "w": 80,
+  "h": 24,
+  "title": "Bash",
+  "name_id": "Form1",
+  "display_border_and_caption": false,
+  "pinned_topmost": false,
+  "resizable": false,
+  "hidden": false,
+  "menus": [],
+  "controls": [],
+  "code": "def on_form_load():\n    import curses\n    import os\n    curses.endwin()\n    os.execvp('bash', ['bash'])\n"
+}

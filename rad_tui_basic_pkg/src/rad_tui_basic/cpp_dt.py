@@ -12,7 +12,7 @@ def _fingerprint(project):
 
 
 # The native adapter must be reviewed whenever DT's Python callbacks change.
-DT_FINGERPRINT = 'e478d84cb4c55fb0d6d7fcd5b6cc79e54be55add53d6aa6b033579876fb2a81a'
+DT_FINGERPRINT = '55d54509bda3c67126727572cbfb62634f7129a9fae50c4cf81844ddb0c6ae59'
 
 
 def is_dt(project):
@@ -173,7 +173,7 @@ public:
             Control button = template_button;
             button.type = 3;
             button.x = -50; button.y = 0; button.w = button.h = 1;
-            button.caption = directory ? icon_for(path, "🗂️") + " " + path.filename().string()
+            button.caption = directory ? icon_for(path, "📁") + " " + path.filename().string()
                                        : icon_for(path) + " " + path.stem().string();
             controls.push_back(button);
             control_names.push_back("dt_entry_" + std::to_string(index));

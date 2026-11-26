@@ -1,0 +1,47 @@
+{
+  "x": 0,
+  "y": 0,
+  "w": 33,
+  "h": 24,
+  "title": "Future Browser",
+  "name_id": "Form1",
+  "display_border_and_caption": false,
+  "pinned_topmost": false,
+  "resizable": true,
+  "hidden": false,
+  "menus": [],
+  "controls": [
+    {
+      "x": 2,
+      "y": 1,
+      "w": 29,
+      "h": 1,
+      "tool_type": 9,
+      "name_id": "lbl_url",
+      "caption": "enter URL to .bin file",
+      "code": ""
+    },
+    {
+      "x": 2,
+      "y": 3,
+      "w": 29,
+      "h": 1,
+      "tool_type": 13,
+      "name_id": "txt_url",
+      "caption": "https://amjp.psy-k.org/futureshell/repo/amd64/tic-tac-toe.amd64.bin",
+      "code": "",
+      "editable": true
+    },
+    {
+      "x": 13,
+      "y": 5,
+      "w": 7,
+      "h": 3,
+      "tool_type": 3,
+      "name_id": "btn_go",
+      "caption": "GO!",
+      "code": ""
+    }
+  ],
+  "code": "\"\"\"Callbacks embedded in futurebrowser.json.\"\"\"\n\nimport curses\nimport re\nimport subprocess\nfrom pathlib import Path\nfrom urllib.parse import urlsplit\n\n\ndef layout():\n    Form1.x = Form1.y = 0\n    Form1.w = max(3, curses.COLS)\n    Form1.h = max(3, curses.LINES)\n    lbl_url.x, lbl_url.y = 2, 1\n    lbl_url.w, lbl_url.h = max(1, Form1.w - 4), 1\n    txt_url.x, txt_url.y = 2, 3\n    txt_url.w, txt_url.h = max(1, Form1.w - 4), 1\n    btn_go.w, btn_go.h = min(7, Form1.w), 3\n    btn_go.x, btn_go.y = max(0, (Form1.w - btn_go.w) // 2), 5\n\n\ndef on_form_load():\n    layout()\n\n\ndef on_form_resize():\n    layout()\n\n\ndef on_enter_txt_url():\n    url = txt_url.caption.strip()\n    parsed = urlsplit(url)\n    if parsed.scheme not in ('http', 'https') or not parsed.netloc or not parsed.path.endswith('.bin'):\n        msgbox('Enter an HTTP(S) URL ending in .bin')\n        return\n\n    try:\n        response = subprocess.run(\n            ['wget', '--spider', '--server-response', '--timeout=10',\n             '--tries=1', '--', url], capture_output=True, text=True, check=False)\n    except OSError as exc:\n        msgbox('Cannot check URL: ' + str(exc))\n        return\n    if response.returncode:\n        if re.search(r'HTTP/\\S+\\s+404\\b', response.stderr):\n            msgbox('404 not found')\n        else:\n            msgbox('Cannot access URL')\n        return\n\n    project_dir = Path(PROJECT_DIR).resolve()\n    runner = next((folder / 'run-downloaded-bin.sh'\n                   for folder in (project_dir, *project_dir.parents)\n                   if (folder / 'run-downloaded-bin.sh').is_file()), None)\n    if runner is None:\n        msgbox('Download runner not found')\n        return\n\n    suspended = False\n    error = None\n    result = None\n    try:\n        curses.def_prog_mode()\n        curses.endwin()\n        suspended = True\n        result = subprocess.run([str(runner), url], cwd=str(runner.parent), check=False)\n    except OSError as exc:\n        error = str(exc)\n    finally:\n        if suspended:\n            curses.reset_prog_mode()\n            curses.curs_set(0)\n    if error is not None:\n        msgbox('Cannot run download: ' + error)\n        return\n    if result.returncode:\n        msgbox('Download or app exited with code ' + str(result.returncode))\n\n\ndef on_form_enter():\n    on_enter_txt_url()\n\n\ndef on_click_btn_go():\n    on_enter_txt_url()\n"
+}

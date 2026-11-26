@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+ports/*/a.out
+ports/*/o.out
+ports/*/.a.out.*

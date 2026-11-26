@@ -1,7 +1,13 @@
-would it be possible ot make a run phoneshell and all its sub apps well on a minimal alpine linux distro with ncurses openssh and other stuff can you make such a distro fully in web assembly? dont do it, just tellme if you can or cant.
- also tell me hte difference in size of such an alpine linux and a gentoo based distro
+also the minesweeper and maybe other apps the form became less high ot hte poitn whre I cant see all the output. also adda a restart game button tot he minesweeper game
+also replace hte tools directory icon with 🔨 Hammer emoji but make sure it does not brake the TUI button liek other emojis have done before
+also replace hte tools directory icon with 🎮 game emoji but make sure it does not brake the TUI button liek other emojis have done before
+
+would it be possible ot make a run phoneshell and all its sub apps well on a minimal　gentoo distro with ncurses openssh and other stuff can you make such a distro fully in web assembly? dont do it, just tellme if you can or cant. it needs to ocntain all nesesarry depeendencies and an installed newest version of all of rad-tui-IDE and phoneshell and all sub apps. also remember that it woudl contain the webasembly version on itc tac toe, nto the bin as the default URL for futurebrowser
 
 because web assembly cant run ELF files, it does nto work on the web demo, I need to chnage the web demo so it uses web assembly instead of ELF can you change that? and generate the proper web assembly file for hte tic-tac-toe-demo and make the downlaoder downlaod it, adn run it like it does on hte real thing please? please make the default URL of tthe web demo version be https://amjp.psy-k.org/futureshell/repo/webasm/tic-tac-toe.webasm.bin and let the tic-tac-toe.webasm.bin file be in the phoneapps directory, I will put it on the server manually
+make the runner run bin files on intel hardware(later I wnat it to run on risk-v but nto yet) or use the pyhton version on non intel non intel non linux hardware and the webassembly for the web demo, eventually the structure of hte repo will look like htis https://amjp.psy-k.org/futureshell/repo/<architecturename>/tic-tac-toe.<architecturename>.bin  but for now I just wnat amd64 adn webasm to work
+
+would all the programs still run if I we only gave htem access to linked libraries and fonts and whrever bash and nano are store at??
 
 hardware 
 please check out my TUI-OS for extremely low cost Linux PDA kind of devices, https://cdn.lurker.chat/SHB7Dk2CBvl1.webp , it should run on this device I think https://www.waveshare.com/product/esp32-related/boards-kits/esp32-s31/esp32-s31-touch-lcd-4.3c.htm
@@ -10,7 +16,7 @@ porfavor checate el sistema operativo para sistemas TUI que hice  para sistemas 
 
  I am thinking of making seperate devices with theri own microcontrolelrs in them for making calls and takign pictures, they coudl even be wireless if wanted,a dn wifi hotspot
 
-instead of browser, use sanbox to download, run and delete a binary
+instead of browser, use sandbox to download, run and delete a binary
 bwrap --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 --proc /proc --dev /dev --tmpfs /tmp --unshare-all ./your-binary
 actually have a "browser" that asks for an https://domain/binary.bin     wget or curl it and then run it as explained
 I think I dont need to do the sha512 verificaiton anymore if I do this cause https already is suppposed to prevent manin hte middle atatcks
@@ -18,3 +24,7 @@ I think I dont need to do the sha512 verificaiton anymore if I do this cause htt
 https://www.amazon.co.jp/-/en/Albapilix-Milk-V-512MB-Development-Milk-V-Duo-S-512M-Basic/dp/B0GJ64NJ9H
 
 https://www.sifive.com/development-platforms/hifive-premier-p550https://www.sifive.com/development-platforms/hifive-premier-p550
+
+
+
+can you reorgaanize my project so that I can have a better directory structure? one where the binary and the sourcecode is seperate, adn split it ito binary ports of many kidns one for webasm, one for amd64 binary version, another for arm64 and another for risk-v and another for native python? please make it so that the native python version runs using the normal rad-tui-ide -run command, and make alld the "binaries" be basf files with the same name as the bin file, but poointin o the proper json files in hte source directory please?   also dont affect the directory stucture of the current one, just make a dist directory inside the rad-tui-BASIC directory, and call it dist, and put hte new stucture and all the files in there please

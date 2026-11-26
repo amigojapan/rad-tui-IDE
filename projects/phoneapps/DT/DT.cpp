@@ -572,7 +572,7 @@ public:
             Control button = template_button;
             button.type = 3;
             button.x = -50; button.y = 0; button.w = button.h = 1;
-            button.caption = directory ? icon_for(path, "🗂️") + " " + path.filename().string()
+            button.caption = directory ? icon_for(path, "📁") + " " + path.filename().string()
                                        : icon_for(path) + " " + path.stem().string();
             controls.push_back(button);
             control_names.push_back("dt_entry_" + std::to_string(index));

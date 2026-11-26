@@ -1,0 +1,64 @@
+{
+  "": [
+    {
+      "kind": "folder",
+      "name": "games",
+      "path": "games",
+      "icon": "🎮"
+    },
+    {
+      "kind": "folder",
+      "name": "internet",
+      "path": "internet",
+      "icon": "🌐"
+    },
+    {
+      "kind": "folder",
+      "name": "tools",
+      "path": "tools",
+      "icon": "🔨"
+    }
+  ],
+  "games": [
+    {
+      "kind": "app",
+      "name": "minesweeper",
+      "id": "minesweeper",
+      "icon": "💣🚩"
+    },
+    {
+      "kind": "app",
+      "name": "tic-tac-toe",
+      "id": "tic-tac-toe",
+      "icon": "⭕❌"
+    }
+  ],
+  "internet": [
+    {
+      "kind": "app",
+      "name": "futurebrowser",
+      "id": "futurebrowser",
+      "icon": "🌐"
+    }
+  ],
+  "tools": [
+    {
+      "kind": "app",
+      "name": "bash",
+      "id": "bash",
+      "icon": "🐚"
+    },
+    {
+      "kind": "app",
+      "name": "calc",
+      "id": "calc",
+      "icon": "🧮"
+    },
+    {
+      "kind": "app",
+      "name": "nano",
+      "id": "nano",
+      "icon": "📃"
+    }
+  ]
+}

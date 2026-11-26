@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+dist_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
+export PYTHONPATH="$dist_dir/source/rad_tui_basic_pkg/src${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONDONTWRITEBYTECODE=1
+exec python3 -m rad_tui_basic.rad_tui_py "$@"
