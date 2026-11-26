@@ -1,0 +1,58 @@
+{
+  "x": 21,
+  "y": 4,
+  "w": 40,
+  "h": 15,
+  "title": "Hello World",
+  "controls": [
+    {
+      "x": 9,
+      "y": 3,
+      "w": 22,
+      "h": 1,
+      "tool_type": 9,
+      "name_id": "lblHello",
+      "caption": "Hello, World!",
+      "code": "",
+      "checked": false,
+      "group": "",
+      "parent": 0,
+      "items": [],
+      "selected_index": -1,
+      "scroll_offset": 0
+    },
+    {
+      "x": 10,
+      "y": 6,
+      "w": 20,
+      "h": 3,
+      "tool_type": 3,
+      "name_id": "btnHello",
+      "caption": "Say Hello",
+      "code": "def on_click_btnHello():\n    msgbox(\"Hello, World!\")\n",
+      "checked": false,
+      "group": "",
+      "parent": 0,
+      "items": [],
+      "selected_index": -1,
+      "scroll_offset": 0
+    },
+    {
+      "x": 10,
+      "y": 10,
+      "w": 20,
+      "h": 3,
+      "tool_type": 3,
+      "name_id": "btnExit",
+      "caption": "Exit",
+      "code": "def on_click_btnExit():\n    end_app()\n",
+      "checked": false,
+      "group": "",
+      "parent": 0,
+      "items": [],
+      "selected_index": -1,
+      "scroll_offset": 0
+    }
+  ],
+  "menu_items": []
+}

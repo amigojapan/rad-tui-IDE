@@ -1771,7 +1771,20 @@ def main(argv=None):
                         help='list the example projects and exit')
     parser.add_argument('--version', action='version',
                         version=f'RAD-TUI Python Edition v{VERSION}')
+    parser.add_argument('--export-web', metavar='PROJECT', help='export project to standalone web app (WASM via Pyodide)')
+    parser.add_argument('--out', metavar='DIR', default='dist', help='output dir for --export-web (default: dist/<name>)')
     args = parser.parse_args(argv)
+
+    if args.export_web:
+        from src.export_web import export_project
+        import pathlib
+        out = args.out
+        # if default dist, nest by project basename
+        if out == 'dist':
+            out = pathlib.Path(out) / pathlib.Path(args.export_web).stem
+        export_project(args.export_web, out)
+        print(f"Exported {args.export_web} -> {out}/ (open index.html or: python3 -m http.server --directory {out})")
+        return 0
 
     if args.list_examples:
         list_examples()

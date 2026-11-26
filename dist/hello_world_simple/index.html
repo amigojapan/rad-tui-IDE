@@ -1,0 +1,17 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hello World — RAD-TUI Web</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+</head><body>
+<h2 style="text-align:center">RAD-TUI Web — Hello World</h2>
+<div id="loading">Loading Python (Pyodide)…</div>
+<div class="form" id="form" style="--fw:336px;--fh:310px">
+  <div class="form-title">Hello World</div>
+  <div class="form-body" id="form-body"><div style="left:72px;top:54px;width:176px;height:18px"><div class="ctrl label" id="lblHello" data-name="lblHello">Hello, World!</div></div>
+<div style="left:80px;top:108px;width:160px;height:54px"><button class="ctrl button" id="btnHello" data-name="btnHello">Say Hello</button></div>
+<div style="left:80px;top:180px;width:160px;height:54px"><button class="ctrl button" id="btnExit" data-name="btnExit">Exit</button></div></div>
+</div>
+<div id="msgbox"><div class="box"><div id="msgbox-title" style="font-weight:bold;margin-bottom:8px"></div><div id="msgbox-text" style="margin-bottom:12px;white-space:pre-wrap"></div><button id="msgbox-ok" class="button">OK</button></div></div>
+<script type="module" src="app.js"></script>
+</body></html>

@@ -1,0 +1,18 @@
+*{box-sizing:border-box}
+body{background:#0a0a14;color:#c0c0c0;font-family:monospace;margin:0;padding:20px}
+.form{position:relative;background:#000080;border:2px solid #c0c0c0;width:var(--fw);height:var(--fh);margin:20px auto;box-shadow:4px 4px #000}
+.form-title{background:#c0c0c0;color:#000080;text-align:center;padding:4px;font-weight:bold}
+.form-body{position:relative;width:100%;height:calc(100% - 24px)}
+.ctrl{position:absolute;overflow:hidden}
+.label{color:#fff;padding:2px}
+.button{background:#c0c0c0;color:#000;border:2px outset #fff;padding:4px 12px;cursor:pointer}
+.button:active{border-style:inset}
+.textbox{background:#fff;color:#000;border:2px inset #808080;padding:2px 4px;white-space:pre}
+.checkbox{color:#fff;cursor:pointer}
+.listbox{background:#fff;color:#000;border:2px inset #808080}
+.frame{border:2px groove #808080;color:#fff}
+.memo{background:#fff;color:#000;border:2px inset #808080;resize:none}
+.status{position:absolute;bottom:0;left:0;right:0;background:#c0c0c0;color:#000;padding:2px 6px;font-size:12px}
+#msgbox{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center}
+#msgbox .box{background:#c0c0c0;border:2px outset #fff;padding:16px;min-width:260px;color:#000}
+#loading{color:#0f0;text-align:center;padding:10px}

@@ -51,6 +51,12 @@ RAD-TUI recreates the magic of early 90s visual programming environments like VB
 - 🔍 **Regex Module** - Pattern matching and text manipulation
 - 🪟 **Custom Dialogs** - User-defined modal dialogs
 
+### New in v2.3.0-dev 🌐 (WebAssembly/Web Export)
+- 🌍 **Export to Web** - One-command ` --export-web` turns any `.json` project into a standalone `index.html` + `project.json` bundle
+- 🐍 **Pyodide (Python-in-WASM)** - Original `code`/`on_click_*` handlers run unchanged in the browser, DOM-synced via `JSControl`
+- 🖥️ **No server required** - `python3 -m http.server` or double-click; offline fallback for calculator/hello_world
+- 🔄 **WASM-ready modules** - `database.py` → `sql.js`, `network` → `fetch` polyfill path prepared
+
 ### Previous Features (v2.1.0)
 - 📝 **TextArea** - Multi-line text editor with scrolling
 - 📊 **Grid Control** - Spreadsheet-like data grid
@@ -112,7 +118,7 @@ radtui/
 │   ├── ROADMAP_V22.md         # v2.2.0 roadmap
 │   ├── HISTORY_V22.md         # v2.2.0 release notes
 │   └── ...                    # Additional guides
-├── src/                       # Source modules (v2.2)
+├── src/                       # Source modules (v2.2+)
 │   ├── treeview.py            # TreeView control
 │   ├── tabcontrol.py          # TabControl
 │   ├── progressbar.py         # ProgressBar
@@ -127,6 +133,7 @@ radtui/
 │   ├── regex.py               # Regex module
 │   ├── custom_dialog.py       # Dialogs
 │   ├── tui_runner.py          # Curses form runner
+│   ├── export_web.py          # Web/WASM exporter (NEW)
 │   └── ...                    # + legacy modules at repo root (old/)
 ├── old/                       # Archived legacy implementations
 │   ├── rad-tui-py.py          # Pre-v2.2 designer (unfinished)
@@ -152,6 +159,10 @@ python3 rad-tui-py.py --run examples/file_explorer_v22.json
 # List examples or run without a terminal
 python3 rad-tui-py.py --list-examples
 python3 rad-tui-py.py --run --headless examples/chart_viewer.json
+
+# Export to standalone web (WASM) — no rebuild needed
+python3 rad-tui-py.py --export-web examples/calculator.json --out dist/calc
+python3 -m http.server --directory dist/calc  # open http://localhost:8000
 
 # Inside the shell you can also use:
 #   RAD-TUI> open examples/calculator.json

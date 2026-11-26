@@ -154,6 +154,21 @@ This release brings 9 new UI controls, 4 powerful modules, and significant enhan
 
 ---
 
+## [Unreleased] - Web/WASM Export (2.3.0-dev)
+
+### ✨ Added
+
+- **Web Exporter** (`src/export_web.py`) — `python3 rad-tui-py.py --export-web <project.json> [--out dist]` generates `index.html` + `app.js` + `style.css` + `project.json` (verified on `calculator.json`, `hello_world_simple.json`).
+- **Pyodide runtime** — Original Python `code`/`on_click_*`/`on_change_*` runs in-browser via `Pyodide v0.26.4` (WASM); controls bridged as `JSControl` with `js.updateControl` sync; `msgbox`/`end_app`/`input_box` proxied to DOM.
+- **Curses → DOM mapping** — Absolute-positioned CSS mimics TUI (`x*8, y*18`); Button/Label/TextBox/CheckBox/ListBox/Frame/Memo/Grid initial renderers; server-side escaping (`json.dumps`) fixed `SyntaxError: unexpected character after line continuation` and button-order bug.
+- **Fallback mode** — Offline JS fallback for calculator/hello_world when Pyodide unavailable.
+
+### 🔧 Changed
+
+- `rad-tui-py.py:1765` CLI now exposes `--export-web`/`--out` (README “How to Run” updated, project tree documents `export_web.py` + `old/`).
+
+---
+
 ## [2.1.0] - 2024-01-14
 
 ### ✨ Added
